@@ -6,7 +6,7 @@ A new Flutter project.
 
 This project is a starting point for a Flutter application.
 
-```git clone https://github.com/yourusername/your-repo-name.git```
+```git clone https://github.com/sanskriti49/dementia-app.git```
 ```cd dementia-app```
 ```flutter pub get```
 ```flutter run```
