@@ -43,6 +43,73 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
+
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+             UserAccountsDrawerHeader(
+              decoration: BoxDecoration(color: Color(0xFF2D6A4F)),
+               accountName: Text(
+                 'Sanskriti Gupta',
+                 style: TextStyle(fontSize: 18),
+               ),
+               accountEmail: Row(
+                 children: [
+                   Icon(Icons.call, size: 16, color: Colors.white70),
+                   SizedBox(width: 6),
+                   Text(
+                     '+91 012345678',
+                     style: TextStyle(fontSize: 14, color: Colors.white70),
+                   ),
+                 ],
+               ),
+               currentAccountPicture: CircleAvatar(
+                 backgroundColor: Colors.white,
+                 child: Icon(Icons.person, color: Color(0xFF2D6A4F), size:44),
+               ),
+               // child: Text(
+               //  'Welcome, Sanskriti',
+               //  style: TextStyle(
+               //    color: Colors.white,
+               //    fontSize: 22,
+               //    fontWeight: FontWeight.bold,
+               //  ),\
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.home),
+              title: const Text('Home'),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Icon(Icons.chat),
+              title: const Text('Chatbot'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ChatScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Settings'),
+              onTap: () {
+                // logout logic
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.exit_to_app),
+              title: const Text('Logout'),
+              onTap: () {
+                // logout logic
+              },
+            ),
+          ],
+        ),
+      ),
+
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(65),
         child: ClipRRect(
@@ -53,11 +120,14 @@ class _HomePageState extends State<HomePage> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: AppBar(
-              backgroundColor: const Color(0xFF2D6A4F).withOpacity(0.85),
+              backgroundColor: const Color(0xFF2D6A4F),
               elevation: 0,
               centerTitle: true,
+              iconTheme: const IconThemeData(
+                color: Colors.white,
+              ),
               title: const Text(
-                'Healthcare',
+                'Dementia Care',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 24,
@@ -70,14 +140,16 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
+
       body: Center(
         child: Padding(
           padding: const EdgeInsets.only(top: 120.0, left: 16.0, right: 16.0),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start, // or center if you want vertical centering
+            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               const SizedBox(height: 20),
+
               const Text(
                 'Good Morning, Sanskriti!',
                 textAlign: TextAlign.center,
@@ -91,27 +163,63 @@ class _HomePageState extends State<HomePage> {
 
               const SizedBox(height: 20),
 
-              // ClipRRect(
-              //   borderRadius: BorderRadius.circular(16),
-              //   child:Image.asset(
-              //     'assets/images/home.jpeg',
-              //     width: 300,
-              //     height: 250,
-              //     fit: BoxFit.cover,
+
+
+              // Container(
+              //   margin: const EdgeInsets.only(top: 10),
+              //   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              //   decoration: BoxDecoration(
+              //     borderRadius: BorderRadius.circular(16),
+              //     color: const Color(0xFFa6c6b7).withOpacity(0.25),
+              //     boxShadow: const [
+              //       BoxShadow(
+              //         color: Colors.teal,
+              //         blurRadius: 2,
+              //         offset: Offset(0, 4),
+              //       ),
+              //     ],
+              //   ),
+              //   child: Column(
+              //     children: [
+              //       Text(
+              //         _formattedDate(),
+              //         textAlign: TextAlign.center,
+              //         style: const TextStyle(
+              //           fontSize: 18,
+              //           color: Color(0xFF004D40),
+              //           fontFamily: 'Inter',
+              //         ),
+              //       ),
+              //       const SizedBox(height: 4),
+              //       Text(
+              //         _formattedTime(),
+              //         textAlign: TextAlign.center,
+              //         style: const TextStyle(
+              //           fontSize: 26,
+              //           fontWeight: FontWeight.bold,
+              //           color: Color(0xFF004D40),
+              //           fontFamily: 'Inter',
+              //         ),
+              //       ),
+              //     ],
               //   ),
               // ),
-              const SizedBox(height: 20),
+
               Container(
                 margin: const EdgeInsets.only(top: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: const Color(0xFFa6c6b7).withOpacity(0.25),
+                  borderRadius: BorderRadius.circular(24),
+                  gradient: LinearGradient(
+                    colors: [Color(0xFFE0F2F1), Color(0xFFBFE0D1)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
+                      color: Colors.green.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: Offset(0, 6),
                     ),
                   ],
                 ),
@@ -119,22 +227,20 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Text(
                       _formattedDate(),
-                      textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
                         color: Color(0xFF004D40),
-                        fontFamily: 'Inter',
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
                       _formattedTime(),
-                      textAlign: TextAlign.center,
                       style: const TextStyle(
-                        fontSize: 26,
+                        fontSize: 34,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF004D40),
-                        fontFamily: 'Inter',
+                        letterSpacing: 1.2,
                       ),
                     ),
                   ],
@@ -162,7 +268,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-
     );
   }
 }

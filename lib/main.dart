@@ -15,7 +15,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         fontFamily: 'Inter',
         useMaterial3: true,
-        scaffoldBackgroundColor: Color(0xFFA6C6B7),
+        scaffoldBackgroundColor: const Color(0xFFE7F0ED),
+        //scaffoldBackgroundColor: Color(0xFFA6C6B7),
       ),
       home: const HomePage(),
       debugShowCheckedModeBanner: false,
