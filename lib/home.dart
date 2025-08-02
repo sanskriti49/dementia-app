@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'chatbot.dart';
+import 'package:intl/intl.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -31,12 +32,31 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
+  String _getDaySuffix(int day){
+    if(day>=11 && day<=13){
+      return 'th';
+    }
+    switch(day%10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  }
+
   String _formattedDate() {
-    return '${_now.day.toString().padLeft(2, '0')}/${_now.month.toString().padLeft(2, '0')}/${_now.year}';
+    String dayOfWeekMonth=DateFormat('EEEE,MMMM').format(_now);
+    String dayNumber=_now.day.toString();
+    String suffix=_getDaySuffix(_now.day);
+    return '$dayOfWeekMonth ${dayNumber}$suffix';
   }
 
   String _formattedTime() {
-    return '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}:${_now.second.toString().padLeft(2, '0')}';
+    return DateFormat('hh:mm a').format(_now);
   }
 
   @override
@@ -68,13 +88,6 @@ class _HomePageState extends State<HomePage> {
                  backgroundColor: Colors.white,
                  child: Icon(Icons.person, color: Color(0xFF2D6A4F), size:44),
                ),
-               // child: Text(
-               //  'Welcome, Sanskriti',
-               //  style: TextStyle(
-               //    color: Colors.white,
-               //    fontSize: 22,
-               //    fontWeight: FontWeight.bold,
-               //  ),\
             ),
 
             ListTile(
@@ -226,13 +239,16 @@ class _HomePageState extends State<HomePage> {
                 child: Column(
                   children: [
                     Text(
-                      _formattedDate(),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w500,
+                      'Today is ${_formattedDate()}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 22.0,
+                        fontWeight: FontWeight.bold,
                         color: Color(0xFF004D40),
+                        fontFamily: 'Inter',
                       ),
                     ),
+
                     const SizedBox(height: 8),
                     Text(
                       _formattedTime(),
