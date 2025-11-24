@@ -71,3 +71,6 @@ ios/Runner/GeneratedPluginRegistrant.*
 .migrate_working_dir/
 buildlog/
 .atom/
+
+# Keep API keys and other secrets out of version control
+.env

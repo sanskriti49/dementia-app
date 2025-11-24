@@ -1,5 +1,3 @@
-// lib/home.dart
-
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,35 +6,10 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'app_drawer.dart';
 import 'reminders.dart';
 import 'chatbot.dart';
+import 'family_page.dart';
 import 'settings_provider.dart';
 
-// ... (SectionTitle and InteractiveFeatureCard widgets remain the same)
-// ... (No changes needed in the widgets above this point)
-
-// WIDGET 1: A reusable title for sections of the UI.
-class SectionTitle extends StatelessWidget {
-  final String title;
-  const SectionTitle({Key? key, required this.title}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    const Color primaryTextColor = Color(0xFF004D40);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 18 * SettingsProvider.of(context).fontSizeMultiplier,
-          fontWeight: FontWeight.bold,
-          color: primaryTextColor.withOpacity(0.8),
-        ),
-      ).animate().fadeIn(delay: 300.ms, duration: 500.ms).slideX(begin: -0.1),
-    );
-  }
-}
-
-// WIDGET 2: The interactive, 3D tilting feature card.
+// WIDGET 1: The interactive, 3D tilting feature card
 class InteractiveFeatureCard extends StatefulWidget {
   const InteractiveFeatureCard({
     Key? key,
@@ -99,22 +72,45 @@ class _InteractiveFeatureCardState extends State<InteractiveFeatureCard> {
             },
             child: Material(
               color: Colors.transparent,
-              elevation: 6,
-              shadowColor: widget.cardColor.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(24),
+              elevation: 8,
+              shadowColor: widget.cardColor.withOpacity(0.4),
+              borderRadius: BorderRadius.circular(30),
               child: InkWell(
                 onTap: widget.onTap,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(30),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: widget.cardColor,
-                    borderRadius: BorderRadius.circular(24),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(30),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        widget.cardColor.withOpacity(0.3),
+                        Colors.white,
+                      ],
+                    ),
+                    border: Border.all(color: Colors.white.withOpacity(0.8), width: 2),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      widget.iconWidget,
-                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: widget.cardColor.withOpacity(0.3),
+                              blurRadius: 12,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: widget.iconWidget,
+                      ),
+                      const SizedBox(height: 16),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8.0),
                         child: Text(
@@ -123,9 +119,10 @@ class _InteractiveFeatureCardState extends State<InteractiveFeatureCard> {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: (16 * widget.fontSizeMultiplier).toDouble(),
+                            fontSize: (18 * widget.fontSizeMultiplier).toDouble(),
                             fontWeight: FontWeight.bold,
                             color: widget.textColor,
+                            fontFamily: 'Raleway',
                           ),
                         ),
                       ),
@@ -232,26 +229,27 @@ class _HomePageState extends State<HomePage> {
     final topPadding = MediaQuery.of(context).padding.top;
 
     const Color primaryTextColor = Color(0xFF004D40);
-    const Color lightGreenCard = Color(0xFFC8E6C9);
-    const Color lightTealCard = Color(0xFFA6E4D9);
+    const Color lightGreenCard = Color(0xFFE8F5E9);
+    const Color lightTealCard = Color(0xFFE0F2F1);
 
     final List<Map<String, dynamic>> featureItems = [
-      {'icon': const Icon(Icons.notifications_active_rounded, size: 48, color: primaryTextColor),
+      {'icon': const Icon(Icons.notifications_active_rounded, size: 32, color: primaryTextColor),
         'label': 'Reminders',
         'color': lightTealCard,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderPage())),
       },
-      {'icon': SvgPicture.asset('assets/images/chat.svg', height: 48, width: 48, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+      {'icon': SvgPicture.asset('assets/images/chat.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
         'label': 'Chat Buddy',
         'color': lightGreenCard,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
       },
-      {'icon': SvgPicture.asset('assets/images/photos.svg', height: 48, width: 48, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
-        'label': 'Memories',
+      {
+        'icon': SvgPicture.asset('assets/images/photos.svg',  height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+        'label': 'Loved Ones',
         'color': lightGreenCard,
-        'onTap': () {},
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FamilyPage())),
       },
-      {'icon': SvgPicture.asset('assets/images/games.svg', height: 48, width: 48, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+      {'icon': SvgPicture.asset('assets/images/games.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
         'label': 'Games',
         'color': lightTealCard,
         'onTap': () {},
@@ -259,94 +257,143 @@ class _HomePageState extends State<HomePage> {
     ];
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7F6),
       drawer: const AppDrawer(),
-      // ✨ FIX: Wrap the body of the Scaffold in a Builder
       body: Builder(
-        builder: (scaffoldContext) { // This `scaffoldContext` is now a child of the Scaffold
+        builder: (scaffoldContext) {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
                 backgroundColor: const Color(0xFF2D6A4F),
                 foregroundColor: Colors.white,
-                expandedHeight: 170,
+                // --- FIX 1: Increased height to 280 to give more room ---
+                expandedHeight: 218,
                 stretch: true,
                 pinned: true,
                 automaticallyImplyLeading: false,
                 flexibleSpace: FlexibleSpaceBar(
-                  titlePadding: const EdgeInsets.only(bottom: 10),
-                  centerTitle: true,
-                  background: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.only(top: topPadding, right: 16.0),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.menu, color: Colors.white, size: 30),
-                            onPressed: () {
-                              // ✨ FIX: Use the new `scaffoldContext` to find the Scaffold
-                              Scaffold.of(scaffoldContext).openDrawer();
-                            },
+                  titlePadding: EdgeInsets.zero,
+                  background: Stack(
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                      ),
+                      // Decorative Circles
+                      Positioned(top: -50, right: -50, child: CircleAvatar(radius: 100, backgroundColor: Colors.white.withOpacity(0.1))),
+                      Positioned(bottom: -30, left: 20, child: CircleAvatar(radius: 60, backgroundColor: Colors.white.withOpacity(0.1))),
+
+                      // --- FIX 2: Increased bottom padding to 80 ---
+                      // This pushes the "Good Morning" and Name UP, away from the overlapping time box.
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 60),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  _getGreeting(),
-                                  style: TextStyle(
-                                      fontSize: 32 * settings.fontSizeMultiplier,
-                                      fontWeight: FontWeight.w300,
-                                      color: Colors.white.withOpacity(0.8)),
+                                IconButton(
+                                  icon: const Icon(Icons.menu, color: Colors.white, size: 30),
+                                  onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
                                 ),
-                                Text(
-                                  'Sanskriti',
-                                  style: TextStyle(
-                                      fontSize: 32 * settings.fontSizeMultiplier,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                      height: 1.2),
-                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.calendar_today, color: Colors.white, size: 14),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _formattedDate(),
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
+                                  ),
+                                )
                               ],
+                            ),
+                            const Spacer(),
+                            Text(
+                              _getGreeting(),
+                              style: TextStyle(
+                                  fontSize: 28 * settings.fontSizeMultiplier,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.white.withOpacity(0.9)),
+                            ).animate().fadeIn().slideX(),
+                            Text(
+                              'Sanskriti',
+                              style: TextStyle(
+                                  fontSize: 36 * settings.fontSizeMultiplier,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  height: 1.1),
+                            ).animate().fadeIn(delay: 200.ms).slideX(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Floating Time Capsule
+              SliverToBoxAdapter(
+                child: Transform.translate(
+                  // This pulls the box up slightly to overlap the green header
+                  // nicely, but because we added padding above, it won't cover text.
+                  offset: const Offset(0, 6),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.12),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.access_time_filled, color: Color(0xFF26A69A)),
+                          const SizedBox(width: 10),
+                          Text(
+                            _formattedTime(),
+                            style: TextStyle(
+                              fontSize: 18 * settings.fontSizeMultiplier,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF004D40),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  stretchModes: const [StretchMode.zoomBackground, StretchMode.fadeTitle],
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    children: [
-                      Icon(Icons.calendar_today, color: primaryTextColor.withOpacity(0.6), size: 16),
-                      const SizedBox(width: 8),
-                      Text(_formattedDate(), style: TextStyle(fontSize: 14 * settings.fontSizeMultiplier, color: primaryTextColor.withOpacity(0.8))),
-                      const Spacer(),
-                      Icon(Icons.access_time, color: primaryTextColor.withOpacity(0.6), size: 16),
-                      const SizedBox(width: 8),
-                      Text(_formattedTime(), style: TextStyle(fontSize: 14 * settings.fontSizeMultiplier, color: primaryTextColor.withOpacity(0.8))),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2),
-              ),
-              const SliverToBoxAdapter(child: SectionTitle(title: 'Explore Features')),
+
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 16.0),
+                padding: const EdgeInsets.fromLTRB(20.0, 20.0, 20.0, 20.0),
                 sliver: SliverGrid.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16, childAspectRatio: 1),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 20,
+                    childAspectRatio: 0.9,
+                  ),
                   itemCount: featureItems.length,
                   itemBuilder: (context, index) {
                     final item = featureItems[index];
@@ -363,13 +410,148 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
               ),
+
+              // SliverToBoxAdapter(
+              //   child: Padding(
+              //     padding: const EdgeInsets.fromLTRB(80, 24, 80, 40),
+              //     child: Container(
+              //       decoration: BoxDecoration(
+              //         color: Colors.white,
+              //         borderRadius: BorderRadius.circular(40), // Pill shape
+              //         boxShadow: [
+              //           BoxShadow(
+              //             color: const Color(0xFF26A69A).withOpacity(0.15),
+              //             blurRadius: 15,
+              //             offset: const Offset(0, 8),
+              //           ),
+              //         ],
+              //       ),
+              //       child: Material(
+              //         color: Colors.transparent,
+              //         child: InkWell(
+              //           onTap: _showFontSizeSlider,
+              //           borderRadius: BorderRadius.circular(40),
+              //           child: Padding(
+              //             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              //             child: Row(
+              //               mainAxisAlignment: MainAxisAlignment.center,
+              //               children: [
+              //                 // 1. The Icon Bubble
+              //                 Container(
+              //                   padding: const EdgeInsets.all(10),
+              //                   decoration: BoxDecoration(
+              //                     color: const Color(0xFFE0F2F1), // Soft Teal
+              //                     shape: BoxShape.circle,
+              //                   ),
+              //                   child: Icon(
+              //                     Icons.format_size_rounded, // Better icon for "Size"
+              //                     color: const Color(0xFF004D40),
+              //                     size: 22 * settings.fontSizeMultiplier,
+              //                   ),
+              //                 ),
+              //
+              //                 const SizedBox(width: 16),
+              //
+              //                 // 2. The Text
+              //                 Text(
+              //                   'Adjust Text Size',
+              //                   style: TextStyle(
+              //                     color: const Color(0xFF004D40),
+              //                     fontSize: 16 * settings.fontSizeMultiplier,
+              //                     fontWeight: FontWeight.bold,
+              //                     letterSpacing: 0.5,
+              //                   ),
+              //                 ),
+              //
+              //                 const SizedBox(width: 12),
+              //               ],
+              //             ),
+              //           ),
+              //         ),
+              //       ),
+              //     ),
+              //   ),
+              // ),
+
+
+              // SliverToBoxAdapter(
+              //
+              //   child: Center(
+              //
+              //     child: Padding(
+              //
+              //       padding: const EdgeInsets.all(32.0),
+              //
+              //       child: TextButton.icon(
+              //
+              //         onPressed: _showFontSizeSlider,
+              //
+              //         icon: Icon(Icons.text_fields_rounded, color: primaryTextColor.withOpacity(0.7)),
+              //
+              //         label: Text('Text Size', style: TextStyle(color: primaryTextColor.withOpacity(0.7), fontSize: 16)),
+              //
+              //         style: TextButton.styleFrom(
+              //
+              //           backgroundColor: Colors.white,
+              //
+              //           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              //
+              //           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              //
+              //         ),
+              //
+              //       ),
+              //
+              //     ),
+              //
+              //   ),
+              //
+              // ),
+
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: TextButton.icon(
-                    onPressed: _showFontSizeSlider,
-                    icon: Icon(Icons.font_download, color: primaryTextColor.withOpacity(0.7)),
-                    label: Text('Change Font Size', style: TextStyle(color: primaryTextColor.withOpacity(0.7))),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: TextButton(
+                      onPressed: _showFontSizeSlider,
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        // Using a standard rounded rect, not a pill
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                        elevation: 0, // Flat look you prefer
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // The nice Icon Bubble you liked
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE0F2F1), // Soft Teal
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.format_size_rounded,
+                              color: const Color(0xFF004D40),
+                              size: 20 * settings.fontSizeMultiplier,
+                            ),
+                          ),
+
+                          const SizedBox(width: 16),
+
+                          // The Bold Text
+                          Text(
+                            'Adjust Text Size',
+                            style: TextStyle(
+                              color: const Color(0xFF004D40).withOpacity(0.7),
+                              fontSize: 16 * settings.fontSizeMultiplier,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
