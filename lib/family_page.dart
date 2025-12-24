@@ -36,14 +36,14 @@ class _FamilyPageState extends State<FamilyPage> {
   // MOCK DATA
   final List<FamilyMember> _family = [
     FamilyMember(
-      name: 'Rohan Sharma',
+      name: 'Rohan',
       relation: 'Son',
       phoneNumber: '+91 98765 43210',
       imagePath: 'assets/images/son.jpg',
       color: const Color(0xFFE0F2F1),
     ),
     FamilyMember(
-      name: 'Priya Gupta',
+      name: 'Priya',
       relation: 'Granddaughter',
       phoneNumber: '+91 91234 56789',
       imagePath: 'assets/images/daughter.jpg',
