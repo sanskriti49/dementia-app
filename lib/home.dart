@@ -345,12 +345,9 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              // Floating Time Capsule
               SliverToBoxAdapter(
                 child: Transform.translate(
-                  // This pulls the box up slightly to overlap the green header
-                  // nicely, but because we added padding above, it won't cover text.
-                  offset: const Offset(0, 6),
+                  offset: const Offset(0, 8),
                   child: Center(
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),

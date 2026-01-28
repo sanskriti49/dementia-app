@@ -1,4 +1,3 @@
-// lib/memory_service.dart
 import 'dart:math';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class MemoryService {
   final GenerativeModel _embeddingModel;
 
-  // We keep a local list in memory for speed, and sync it with phone storage
+  // a local list in memory for speed and sync it with phone storage
   List<String> _memories = [];
 
   MemoryService(String apiKey)
@@ -21,13 +20,8 @@ class MemoryService {
     _memories = prefs.getStringList('user_memories') ?? [];
   }
 
-  // 1. SAVE: Add a new memory
+  // SAVE: Add a new memory
   Future<void> addMemory(String cleanText) async {
-    //
-    // _memories.add(text);
-    // final prefs = await SharedPreferences.getInstance();
-    // await prefs.setStringList('user_memories', _memories);
-
     if(!_memories.contains(cleanText)){
       _memories.add(cleanText);
       final prefs = await SharedPreferences.getInstance();
@@ -35,7 +29,7 @@ class MemoryService {
     }
   }
 
-  // 2. SEARCH: Find the most relevant memory using Cosine Similarity
+  // SEARCH: Find the most relevant memory using Cosine Similarity
   Future<String?> findRelevantMemory(String query) async {
     if (_memories.isEmpty) return null;
 
@@ -70,7 +64,7 @@ class MemoryService {
     }
   }
 
-  // Math helper to compare vectors
+  // math helper to compare vectors
   double _cosineSimilarity(List<double> a, List<double> b) {
     double dotProduct = 0.0;
     double normA = 0.0;

@@ -1,12 +1,13 @@
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui'; // Required for ImageFilter
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'settings_provider.dart';
 
-// 1. DATA MODEL
+// --- DATA MODEL ---
 class FamilyMember {
   final String name;
   final String relation;
@@ -33,7 +34,6 @@ class FamilyPage extends StatefulWidget {
 }
 
 class _FamilyPageState extends State<FamilyPage> {
-  // MOCK DATA
   final List<FamilyMember> _family = [
     FamilyMember(
       name: 'Rohan',
@@ -61,23 +61,25 @@ class _FamilyPageState extends State<FamilyPage> {
   final PageController _pageController = PageController(viewportFraction: 0.85);
   final ImagePicker _picker = ImagePicker();
 
-  // --- DELETE LOGIC ---
+  int _currentPage=0;
+
   void _deleteMember(int index) {
     setState(() {
       _family.removeAt(index);
     });
-
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Text("Memory removed."),
-        backgroundColor: Colors.grey[700],
+        content: const Text("Memory removed"),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.grey[800],
       ),
     );
   }
 
-  // --- ADD MEMORY LOGIC ---
+  void _nextPage() => _pageController.nextPage(duration: 500.ms, curve: Curves.easeOutQuart);
+  void _prevPage() => _pageController.previousPage(duration: 500.ms, curve: Curves.easeOutQuart);
+
   Future<void> _showAddMemberDialog() async {
     final nameController = TextEditingController();
     final relationController = TextEditingController();
@@ -98,8 +100,10 @@ class _FamilyPageState extends State<FamilyPage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              title: const Text("New Memory", style: TextStyle(color: Color(0xFF004D40), fontWeight: FontWeight.bold)),
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+              title: const Text("New Memory", style: TextStyle(color: Color(0xFF1F2937), fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -108,43 +112,46 @@ class _FamilyPageState extends State<FamilyPage> {
                       onTap: () async {
                         final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
                         if (image != null) {
-                          setDialogState(() {
-                            pickedImagePath = image.path;
-                          });
+                          setDialogState(() => pickedImagePath = image.path);
                         }
                       },
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundColor: const Color(0xFFE0F2F1),
-                        backgroundImage: pickedImagePath != null
-                            ? FileImage(File(pickedImagePath!))
-                            : null,
+                      child: Container(
+                        height: 110,
+                        width: 110,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF2D6A4F).withOpacity(0.3), width: 2),
+                          image: pickedImagePath != null
+                              ? DecorationImage(image: FileImage(File(pickedImagePath!)), fit: BoxFit.cover)
+                              : null,
+                        ),
                         child: pickedImagePath == null
-                            ? const Icon(Icons.add_a_photo, size: 30, color: Color(0xFF26A69A))
+                            ? const Icon(Icons.add_a_photo_rounded, size: 35, color: Color(0xFF2D6A4F))
                             : null,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    const Text("Tap to add photo", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    const SizedBox(height: 16),
-                    _buildTextField(nameController, "Name", Icons.person_outline),
+                    const SizedBox(height: 20),
+                    _buildTextField(nameController, "Name (e.g. Rohan)", Icons.person_rounded),
                     const SizedBox(height: 12),
-                    _buildTextField(relationController, "Relation", Icons.favorite_border),
+                    _buildTextField(relationController, "Who is this? (e.g. Son)", Icons.favorite_rounded),
                     const SizedBox(height: 12),
-                    _buildTextField(phoneController, "Phone Number", Icons.phone_outlined, isPhone: true),
+                    _buildTextField(phoneController, "Phone Number", Icons.phone_rounded, isPhone: true),
                   ],
                 ),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
+                  child: Text("Cancel", style: TextStyle(color: Colors.grey[500], fontSize: 16)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF26A69A),
+                    backgroundColor: const Color(0xFF2D6A4F),
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
                     if (nameController.text.isNotEmpty && pickedImagePath != null) {
@@ -159,8 +166,8 @@ class _FamilyPageState extends State<FamilyPage> {
                         ));
                       });
                       Navigator.pop(context);
-                      Future.delayed(const Duration(milliseconds: 300), () {
-                        _pageController.animateToPage(_family.length - 1, duration: const Duration(milliseconds: 500), curve: Curves.easeOut);
+                      Future.delayed(300.ms, () {
+                        _pageController.animateToPage(_family.length - 1, duration: 600.ms, curve: Curves.easeOutQuart);
                       });
                     }
                   },
@@ -179,12 +186,14 @@ class _FamilyPageState extends State<FamilyPage> {
       controller: controller,
       keyboardType: isPhone ? TextInputType.phone : TextInputType.text,
       decoration: InputDecoration(
-        prefixIcon: Icon(icon, color: const Color(0xFF26A69A), size: 20),
+        prefixIcon: Icon(icon, color: const Color(0xFF9CA3AF), size: 22),
         hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
-        fillColor: const Color(0xFFF5F7F6),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        fillColor: const Color(0xFFF9FAFB),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFF2D6A4F), width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -192,85 +201,172 @@ class _FamilyPageState extends State<FamilyPage> {
   @override
   Widget build(BuildContext context) {
     final settings = SettingsProvider.of(context);
+    final double fontScale = max(settings.fontSizeMultiplier, 1.0);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7F6),
+      backgroundColor: const Color(0xFFFDFDFD),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('Loved Ones',
-            style: TextStyle(
-                color: Colors.white,
-                fontFamily: 'Raleway',
-                fontSize: 22 * settings.fontSizeMultiplier,
-                fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.white),
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+        title: Text(
+          'My Family',
+          style: TextStyle(
+            color: const Color(0xFF1F2937),
+            fontFamily: 'Raleway',
+            fontSize: 24 * fontScale,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
         centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 30),
-          Text(
-            "Tap a card to flip it",
-            style: TextStyle(
-              fontSize: 16 * settings.fontSizeMultiplier,
-              color: Colors.grey[600],
-              fontStyle: FontStyle.italic,
-            ),
-          ).animate().fadeIn(delay: 500.ms),
-
-          Expanded(
-            child: PageView.builder(
-              controller: _pageController,
-              itemCount: _family.length + 1,
-              itemBuilder: (context, index) {
-                if (index == _family.length) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-                    child: AddMemoryCard(
-                      onTap: _showAddMemberDialog,
-                      fontSizeMultiplier: settings.fontSizeMultiplier,
-                    ),
-                  );
-                }
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-                  child: FlipCard(
-                    member: _family[index],
-                    fontSizeMultiplier: settings.fontSizeMultiplier,
-                    onDelete: () => _deleteMember(index),
-                  ),
-                );
-              },
+        backgroundColor: Colors.white.withOpacity(0.8), // Glassy AppBar
+        elevation: 0,
+        toolbarHeight: 70,
+        flexibleSpace: ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: CircleAvatar(
+            backgroundColor: Colors.white,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF1F2937), size: 20),
+              onPressed: () => Navigator.pop(context),
             ),
           ),
-          const SizedBox(height: 50),
+        ),
+      ),
+      body: Stack(
+        children: [
+
+          Positioned(
+            top: -100,
+            right: -100,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 80, sigmaY: 80),
+              child: Container(
+                width: 400,
+                height: 400,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFE0F2F1).withOpacity(0.6),
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
+            bottom: -50,
+            left: -50,
+            child: ImageFiltered(
+              imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFFFFF3E0).withOpacity(0.6),
+                ),
+              ),
+            ),
+          ),
+
+          // Main Carousel
+          Center(
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.75, // Occupy 75% height
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _family.length + 1,
+                physics: const BouncingScrollPhysics(),
+                onPageChanged: (int index)=>setState(()=>_currentPage=index),
+                itemBuilder: (context, index) {
+                  // Calculates scale for the "pop" effect on the center card
+                  return AnimatedBuilder(
+                    animation: _pageController,
+                    builder: (context, child) {
+                      double value = 1.0;
+                      if (_pageController.position.haveDimensions) {
+                        value = _pageController.page! - index;
+                        value = (1 - (value.abs() * 0.2)).clamp(0.8, 1.0);
+                      }
+                      return Transform.scale(
+                        scale: value,
+                        child: child,
+                      );
+                    },
+                    child: index == _family.length
+                        ? Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+                      child: AddMemoryCard(onTap: _showAddMemberDialog, fontScale: fontScale),
+                    )
+                        : Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+                      child: PremiumFamilyCard(
+                        member: _family[index],
+                        fontScale: fontScale,
+                        onDelete: () => _deleteMember(index),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
+          // Glass Navigation Arrows
+          if(_currentPage>0)
+            Positioned(
+              left: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(child: _buildGlassArrow(
+                  Icons.arrow_back_ios_new_rounded, _prevPage)),
+            ),
+          if(_currentPage<_family.length)
+            Positioned(
+              right: 16,
+              top: 0,
+              bottom: 0,
+              child: Center(child: _buildGlassArrow(Icons.arrow_forward_ios_rounded, _nextPage)),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildGlassArrow(IconData icon, VoidCallback onTap) {
+    return ClipOval(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.4),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withOpacity(0.6), width: 1.5),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, spreadRadius: 2),
+              ],
+            ),
+            child: Icon(icon, color: const Color(0xFF1F2937), size: 24),
+          ),
+        ),
       ),
     );
   }
 }
 
-// 3. ADD MEMORY CARD
+// --- BEAUTIFUL ADD CARD ---
 class AddMemoryCard extends StatelessWidget {
   final VoidCallback onTap;
-  final double fontSizeMultiplier;
+  final double fontScale;
 
-  const AddMemoryCard({
-    super.key,
-    required this.onTap,
-    required this.fontSizeMultiplier,
-  });
+  const AddMemoryCard({super.key, required this.onTap, required this.fontScale});
 
   @override
   Widget build(BuildContext context) {
@@ -278,48 +374,41 @@ class AddMemoryCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F8F7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: const Color(0xFF26A69A).withOpacity(0.5),
-            width: 3,
-          ),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 5)),
+            BoxShadow(color: const Color(0xFFE5E7EB).withOpacity(0.5), blurRadius: 20, offset: const Offset(0, 8)),
           ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(28),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFFF3F4F6),
                 shape: BoxShape.circle,
                 boxShadow: [
-                  BoxShadow(color: const Color(0xFF26A69A).withOpacity(0.2), blurRadius: 15, spreadRadius: 5)
+                  BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, spreadRadius: 5),
                 ],
               ),
-              child: const Icon(Icons.add_a_photo_rounded, size: 50, color: Color(0xFF26A69A)),
+              child: const Icon(Icons.add_rounded, size: 40, color: Color(0xFF9CA3AF)),
             ),
             const SizedBox(height: 24),
             Text(
-              "Add New Memory",
+              "New Memory",
               style: TextStyle(
-                fontSize: 22 * fontSizeMultiplier,
+                fontSize: 22 * fontScale,
                 fontWeight: FontWeight.bold,
-                color: const Color(0xFF004D40),
-                fontFamily: 'Raleway',
+                color: const Color(0xFF374151),
+                letterSpacing: -0.5,
               ),
             ),
             const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32.0),
-              child: Text(
-                "Keep your loved ones close.\nTap here to add a photo.",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16 * fontSizeMultiplier, color: Colors.grey[600], height: 1.5),
-              ),
+            Text(
+              "Add a loved one",
+              style: TextStyle(fontSize: 16 * fontScale, color: const Color(0xFF9CA3AF)),
             ),
           ],
         ),
@@ -328,308 +417,215 @@ class AddMemoryCard extends StatelessWidget {
   }
 }
 
-// 4. FLIP CARD
-class FlipCard extends StatefulWidget {
+// --- PREMIUM FAMILY CARD ---
+
+class PremiumFamilyCard extends StatelessWidget {
   final FamilyMember member;
-  final double fontSizeMultiplier;
+  final double fontScale;
   final VoidCallback onDelete;
 
-  const FlipCard({
+  const PremiumFamilyCard({
     super.key,
     required this.member,
-    required this.fontSizeMultiplier,
+    required this.fontScale,
     required this.onDelete,
   });
 
-  @override
-  State<FlipCard> createState() => _FlipCardState();
-}
-
-class _FlipCardState extends State<FlipCard> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-  bool _isFront = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 600),
-    );
-    _animation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOutBack),
-    );
-  }
-
-  void _flipCard() {
-    if (_isFront) {
-      _controller.forward();
-    } else {
-      _controller.reverse();
-    }
-    setState(() => _isFront = !_isFront);
-  }
-
-  Future<void> _makePhoneCall(String phoneNumber) async {
-    final String cleanNumber = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+  // 1. Phone Call Logic
+  Future<void> _makePhoneCall() async {
+    final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'\s+'), '');
     final Uri launchUri = Uri(scheme: 'tel', path: cleanNumber);
-    try {
-      if (await canLaunchUrl(launchUri)) {
-        await launchUrl(launchUri);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
+    if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
+  }
+
+  // 2. WhatsApp Logic
+  Future<void> _openWhatsApp() async {
+    // WhatsApp requires just the digits (no +, spaces, or dashes)
+    final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+
+    // Create the WhatsApp URL
+    final Uri url = Uri.parse("https://wa.me/$cleanNumber");
+
+    // Launch logic
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     }
   }
 
-  void _confirmDelete() {
+  void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text("Remove Memory?", style: TextStyle(color: Colors.redAccent)),
-        content: Text("Are you sure you want to remove ${widget.member.name} from your loved ones?"),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Delete Memory?", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("Are you sure you want to remove ${member.name}?", style: const TextStyle(color: Colors.grey)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text("Keep", style: TextStyle(color: Colors.grey)),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              foregroundColor: Colors.white,
-            ),
+          TextButton(
             onPressed: () {
               Navigator.pop(context);
-              widget.onDelete();
+              onDelete();
             },
-            child: const Text("Remove"),
+            child: const Text("Remove", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: _flipCard,
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) {
-          final angle = _animation.value * pi;
-          final isBack = angle > (pi / 2);
-
-          return Transform(
-            transform: Matrix4.identity()..setEntry(3, 2, 0.001)..rotateY(angle),
-            alignment: Alignment.center,
-            child: isBack
-                ? Transform(
-              alignment: Alignment.center,
-              transform: Matrix4.identity()..rotateY(pi),
-              child: _buildBack(),
-            )
-                : _buildFront(),
-          );
-        },
-      ),
-    );
-  }
-
-  ImageProvider _getImageProvider() {
-    if (widget.member.isAsset) {
-      return AssetImage(widget.member.imagePath);
-    } else {
-      return FileImage(File(widget.member.imagePath));
-    }
-  }
-
-  Widget _buildFront() {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(32),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: const Color(0xFF1F2937).withOpacity(0.08),
+            blurRadius: 25,
+            offset: const Offset(0, 10),
+            spreadRadius: 2,
+          ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-            child: AspectRatio(
-              aspectRatio: 1 / 1,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: widget.member.color,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      const Center(child: Icon(Icons.person, size: 80, color: Colors.white54)),
-                      Image(
-                        image: _getImageProvider(),
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => const SizedBox(),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      widget.member.name,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 26 * widget.fontSizeMultiplier,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF004D40),
-                        fontFamily: 'Raleway',
-                        letterSpacing: 0.5,
-                      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Column(
+          children: [
+            // 1. IMAGE AREA (Top 55% to save space for buttons)
+            Expanded(
+              flex: 55,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Hero(
+                    tag: member.name,
+                    child: Image(
+                      image: member.isAsset ? AssetImage(member.imagePath) as ImageProvider : FileImage(File(member.imagePath)),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: const Icon(Icons.person, size: 80, color: Colors.grey)),
                     ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: widget.member.color,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        widget.member.relation,
-                        style: TextStyle(
-                          fontSize: 14 * widget.fontSizeMultiplier,
-                          color: Colors.black87,
-                          fontWeight: FontWeight.w600,
+                  ),
+                  Positioned(
+                    top: 16,
+                    right: 16,
+                    child: ClipOval(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                        child: GestureDetector(
+                          onTap: () => _confirmDelete(context),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
+                          ),
                         ),
                       ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // 2. INFO & BUTTONS AREA (Bottom 45%)
+            Expanded(
+              flex: 45,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                color: Colors.white,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Name & Relation
+                    Column(
+                      children: [
+                        Text(
+                          member.name,
+                          style: TextStyle(
+                            fontSize: 26 * fontScale,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF1F2937),
+                            letterSpacing: -0.5,
+                            height: 1.1,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: member.color.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            member.relation,
+                            style: TextStyle(
+                              fontSize: 16 * fontScale,
+                              color: const Color(0xFF4B5563),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // --- NEW: DUAL BUTTON ROW ---
+                    Row(
+                      children: [
+                        // CALL BUTTON
+                        Expanded(
+                          child: SizedBox(
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: _makePhoneCall,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2D6A4F),
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: const Icon(Icons.call_rounded, size: 30),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12), // Spacing between buttons
+
+                        // WHATSAPP BUTTON
+                        Expanded(
+                          child: SizedBox(
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: _openWhatsApp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366), // Official WhatsApp Green
+                                foregroundColor: Colors.white,
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                                padding: EdgeInsets.zero,
+                              ),
+                              child: const Icon(Icons.chat_bubble_rounded, size: 28),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-          Icon(Icons.touch_app_outlined, size: 20, color: Colors.grey[300]),
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-
-  // --- FIXED BACK WIDGET ---
-  Widget _buildBack() {
-    return Container(
-      decoration: BoxDecoration(
-        color: widget.member.color,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-        border: Border.all(color: Colors.white, width: 12),
-      ),
-      // STACKFIT.EXPAND ensures the stack fills the Container, preventing shrinkage
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // 1. MAIN CONTENT
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircleAvatar(
-                  radius: 45,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.favorite, color: Colors.pink[300], size: 45),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  "Call",
-                  style: TextStyle(fontSize: 16 * widget.fontSizeMultiplier, color: Colors.grey[700]),
-                ),
-                Text(
-                  widget.member.name,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 28 * widget.fontSizeMultiplier,
-                    fontWeight: FontWeight.bold,
-                    color: const Color(0xFF004D40),
-                  ),
-                ),
-                const SizedBox(height: 40),
-                SizedBox(
-                  width: 200,
-                  height: 60,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _makePhoneCall(widget.member.phoneNumber),
-                    icon: const Icon(Icons.call, size: 28),
-                    label: Text(
-                      "CALL",
-                      style: TextStyle(fontSize: 20 * widget.fontSizeMultiplier, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF26A69A),
-                      foregroundColor: Colors.white,
-                      elevation: 8,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  widget.member.phoneNumber,
-                  style: TextStyle(
-                    fontSize: 18 * widget.fontSizeMultiplier,
-                    color: Colors.grey[800],
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // 2. DELETE BUTTON (Positioned correctly inside the frame)
-          Positioned(
-            top: 0,
-            right: 0,
-            child: IconButton(
-              onPressed: _confirmDelete,
-              icon: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 24),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
