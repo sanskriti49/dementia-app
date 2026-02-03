@@ -1,13 +1,12 @@
 import 'dart:io';
 import 'dart:math';
-import 'dart:ui'; // Required for ImageFilter
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:image_picker/image_picker.dart';
 import 'settings_provider.dart';
 
-// --- DATA MODEL ---
 class FamilyMember {
   final String name;
   final String relation;
@@ -218,7 +217,7 @@ class _FamilyPageState extends State<FamilyPage> {
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white.withOpacity(0.8), // Glassy AppBar
+        backgroundColor: Colors.white.withOpacity(0.8),
         elevation: 0,
         toolbarHeight: 70,
         flexibleSpace: ClipRect(
@@ -276,14 +275,13 @@ class _FamilyPageState extends State<FamilyPage> {
           // Main Carousel
           Center(
             child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.75, // Occupy 75% height
+              height: MediaQuery.of(context).size.height * 0.75,
               child: PageView.builder(
                 controller: _pageController,
                 itemCount: _family.length + 1,
                 physics: const BouncingScrollPhysics(),
                 onPageChanged: (int index)=>setState(()=>_currentPage=index),
                 itemBuilder: (context, index) {
-                  // Calculates scale for the "pop" effect on the center card
                   return AnimatedBuilder(
                     animation: _pageController,
                     builder: (context, child) {
@@ -316,7 +314,6 @@ class _FamilyPageState extends State<FamilyPage> {
             ),
           ),
 
-          // Glass Navigation Arrows
           if(_currentPage>0)
             Positioned(
               left: 16,
@@ -361,7 +358,6 @@ class _FamilyPageState extends State<FamilyPage> {
   }
 }
 
-// --- BEAUTIFUL ADD CARD ---
 class AddMemoryCard extends StatelessWidget {
   final VoidCallback onTap;
   final double fontScale;
@@ -417,8 +413,6 @@ class AddMemoryCard extends StatelessWidget {
   }
 }
 
-// --- PREMIUM FAMILY CARD ---
-
 class PremiumFamilyCard extends StatelessWidget {
   final FamilyMember member;
   final double fontScale;
@@ -431,22 +425,20 @@ class PremiumFamilyCard extends StatelessWidget {
     required this.onDelete,
   });
 
-  // 1. Phone Call Logic
+  //  Phone call
   Future<void> _makePhoneCall() async {
     final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'\s+'), '');
     final Uri launchUri = Uri(scheme: 'tel', path: cleanNumber);
     if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
   }
 
-  // 2. WhatsApp Logic
+  // whatsApp Logic
   Future<void> _openWhatsApp() async {
-    // WhatsApp requires just the digits (no +, spaces, or dashes)
+    // just the digits (no +, spaces, or dashes)
     final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
 
-    // Create the WhatsApp URL
     final Uri url = Uri.parse("https://wa.me/$cleanNumber");
 
-    // Launch logic
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     }
@@ -497,7 +489,6 @@ class PremiumFamilyCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(32),
         child: Column(
           children: [
-            // 1. IMAGE AREA (Top 55% to save space for buttons)
             Expanded(
               flex: 55,
               child: Stack(
@@ -535,7 +526,6 @@ class PremiumFamilyCard extends StatelessWidget {
               ),
             ),
 
-            // 2. INFO & BUTTONS AREA (Bottom 45%)
             Expanded(
               flex: 45,
               child: Container(
@@ -544,7 +534,6 @@ class PremiumFamilyCard extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Name & Relation
                     Column(
                       children: [
                         Text(

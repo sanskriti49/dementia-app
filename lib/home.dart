@@ -8,8 +8,8 @@ import 'reminders.dart';
 import 'chatbot.dart';
 import 'family_page.dart';
 import 'settings_provider.dart';
+import 'visual_aide_screen.dart';
 
-// WIDGET 1: The interactive, 3D tilting feature card
 class InteractiveFeatureCard extends StatefulWidget {
   const InteractiveFeatureCard({
     Key? key,
@@ -138,7 +138,6 @@ class _InteractiveFeatureCardState extends State<InteractiveFeatureCard> {
   }
 }
 
-// The main HomePage widget.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -232,13 +231,45 @@ class _HomePageState extends State<HomePage> {
     const Color lightGreenCard = Color(0xFFE8F5E9);
     const Color lightTealCard = Color(0xFFE0F2F1);
 
+    // final List<Map<String, dynamic>> featureItems = [
+    //   {'icon': const Icon(Icons.notifications_active_rounded, size: 32, color: primaryTextColor),
+    //     'label': 'Reminders',
+    //     'color': lightTealCard,
+    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderPage())),
+    //   },
+    //   {'icon': SvgPicture.asset('assets/images/chat.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+    //     'label': 'Chat Buddy',
+    //     'color': lightGreenCard,
+    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
+    //   },
+    //   {
+    //     'icon': SvgPicture.asset('assets/images/photos.svg',  height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+    //     'label': 'Loved Ones',
+    //     'color': lightGreenCard,
+    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FamilyPage())),
+    //   },
+    //   {'icon': SvgPicture.asset('assets/images/games.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+    //     'label': 'Games',
+    //     'color': lightTealCard,
+    //     'onTap': () {},
+    //   },
+    //   {
+    //     'icon': const Icon(Icons.visibility_rounded, size: 32, color: primaryTextColor),
+    //     'label': 'Magic Eye',
+    //     'color': lightTealCard,
+    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisualAideScreen())),
+    //   },
+    // ];
+
     final List<Map<String, dynamic>> featureItems = [
-      {'icon': const Icon(Icons.notifications_active_rounded, size: 32, color: primaryTextColor),
+      {
+        'icon': const Icon(Icons.notifications_active_rounded, size: 32, color: primaryTextColor),
         'label': 'Reminders',
         'color': lightTealCard,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderPage())),
       },
-      {'icon': SvgPicture.asset('assets/images/chat.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
+      {
+        'icon': SvgPicture.asset('assets/images/chat.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
         'label': 'Chat Buddy',
         'color': lightGreenCard,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
@@ -249,13 +280,14 @@ class _HomePageState extends State<HomePage> {
         'color': lightGreenCard,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FamilyPage())),
       },
-      {'icon': SvgPicture.asset('assets/images/games.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
-        'label': 'Games',
+      // SWAPPED: "Games" is gone, "Magic Eye" is here.
+      {
+        'icon': const Icon(Icons.visibility_rounded, size: 32, color: primaryTextColor),
+        'label': 'Magic Eye',
         'color': lightTealCard,
-        'onTap': () {},
+        'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisualAideScreen())),
       },
     ];
-
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7F6),
       drawer: const AppDrawer(),
@@ -266,7 +298,6 @@ class _HomePageState extends State<HomePage> {
               SliverAppBar(
                 backgroundColor: const Color(0xFF2D6A4F),
                 foregroundColor: Colors.white,
-                // --- FIX 1: Increased height to 280 to give more room ---
                 expandedHeight: 218,
                 stretch: true,
                 pinned: true,
@@ -284,12 +315,10 @@ class _HomePageState extends State<HomePage> {
                           ),
                         ),
                       ),
-                      // Decorative Circles
                       Positioned(top: -50, right: -50, child: CircleAvatar(radius: 100, backgroundColor: Colors.white.withOpacity(0.1))),
                       Positioned(bottom: -30, left: 20, child: CircleAvatar(radius: 60, backgroundColor: Colors.white.withOpacity(0.1))),
 
-                      // --- FIX 2: Increased bottom padding to 80 ---
-                      // This pushes the "Good Morning" and Name UP, away from the overlapping time box.
+
                       Padding(
                         padding: EdgeInsets.fromLTRB(20, topPadding + 10, 20, 60),
                         child: Column(
@@ -408,102 +437,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
 
-              // SliverToBoxAdapter(
-              //   child: Padding(
-              //     padding: const EdgeInsets.fromLTRB(80, 24, 80, 40),
-              //     child: Container(
-              //       decoration: BoxDecoration(
-              //         color: Colors.white,
-              //         borderRadius: BorderRadius.circular(40), // Pill shape
-              //         boxShadow: [
-              //           BoxShadow(
-              //             color: const Color(0xFF26A69A).withOpacity(0.15),
-              //             blurRadius: 15,
-              //             offset: const Offset(0, 8),
-              //           ),
-              //         ],
-              //       ),
-              //       child: Material(
-              //         color: Colors.transparent,
-              //         child: InkWell(
-              //           onTap: _showFontSizeSlider,
-              //           borderRadius: BorderRadius.circular(40),
-              //           child: Padding(
-              //             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              //             child: Row(
-              //               mainAxisAlignment: MainAxisAlignment.center,
-              //               children: [
-              //                 // 1. The Icon Bubble
-              //                 Container(
-              //                   padding: const EdgeInsets.all(10),
-              //                   decoration: BoxDecoration(
-              //                     color: const Color(0xFFE0F2F1), // Soft Teal
-              //                     shape: BoxShape.circle,
-              //                   ),
-              //                   child: Icon(
-              //                     Icons.format_size_rounded, // Better icon for "Size"
-              //                     color: const Color(0xFF004D40),
-              //                     size: 22 * settings.fontSizeMultiplier,
-              //                   ),
-              //                 ),
-              //
-              //                 const SizedBox(width: 16),
-              //
-              //                 // 2. The Text
-              //                 Text(
-              //                   'Adjust Text Size',
-              //                   style: TextStyle(
-              //                     color: const Color(0xFF004D40),
-              //                     fontSize: 16 * settings.fontSizeMultiplier,
-              //                     fontWeight: FontWeight.bold,
-              //                     letterSpacing: 0.5,
-              //                   ),
-              //                 ),
-              //
-              //                 const SizedBox(width: 12),
-              //               ],
-              //             ),
-              //           ),
-              //         ),
-              //       ),
-              //     ),
-              //   ),
-              // ),
-
-
-              // SliverToBoxAdapter(
-              //
-              //   child: Center(
-              //
-              //     child: Padding(
-              //
-              //       padding: const EdgeInsets.all(32.0),
-              //
-              //       child: TextButton.icon(
-              //
-              //         onPressed: _showFontSizeSlider,
-              //
-              //         icon: Icon(Icons.text_fields_rounded, color: primaryTextColor.withOpacity(0.7)),
-              //
-              //         label: Text('Text Size', style: TextStyle(color: primaryTextColor.withOpacity(0.7), fontSize: 16)),
-              //
-              //         style: TextButton.styleFrom(
-              //
-              //           backgroundColor: Colors.white,
-              //
-              //           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              //
-              //           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              //
-              //         ),
-              //
-              //       ),
-              //
-              //     ),
-              //
-              //   ),
-              //
-              // ),
 
               SliverToBoxAdapter(
                 child: Center(
@@ -513,19 +446,17 @@ class _HomePageState extends State<HomePage> {
                       onPressed: _showFontSizeSlider,
                       style: TextButton.styleFrom(
                         backgroundColor: Colors.white,
-                        // Using a standard rounded rect, not a pill
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                        elevation: 0, // Flat look you prefer
+                        elevation: 0,
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // The nice Icon Bubble you liked
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE0F2F1), // Soft Teal
+                              color: const Color(0xFFE0F2F1),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
@@ -537,7 +468,6 @@ class _HomePageState extends State<HomePage> {
 
                           const SizedBox(width: 16),
 
-                          // The Bold Text
                           Text(
                             'Adjust Text Size',
                             style: TextStyle(

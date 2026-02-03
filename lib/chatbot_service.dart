@@ -15,7 +15,6 @@ class ChatbotService {
       throw Exception('API Key not found.');
     }
 
-    // 1. The Chat Model (The gentle personality)
     _chatModel = GenerativeModel(
       model: 'gemini-flash-latest',
       apiKey: _apiKey,
@@ -25,8 +24,6 @@ class ChatbotService {
       ],
     );
 
-    // 2. The Router Model (The Brain)
-    // It outputs JSON to classify language and intent
     _routerModel = GenerativeModel(
       model: 'gemini-flash-latest',
       apiKey: _apiKey,
@@ -39,7 +36,6 @@ class ChatbotService {
 
   Future<String> sendMessage(String rawUserMsg) async {
     try {
-      // --- STEP 1: ANALYZE (Intent + Language + Translation) ---
 
       final routerPrompt = """
       You are the brain of an app for a dementia patient in India. 
@@ -62,7 +58,6 @@ class ChatbotService {
       final routerResponse = await _routerModel.generateContent([Content.text(routerPrompt)]);
       final routerJson = routerResponse.text ?? "{}";
 
-      // Quick & Dirty Parsing
       String intent = "CHAT";
       String cleanEnglish = rawUserMsg;
       String userLang = "English";
@@ -70,25 +65,19 @@ class ChatbotService {
       if (routerJson.contains('"intent": "SAVE"')) intent = "SAVE";
       if (routerJson.contains('"intent": "QUERY"')) intent = "QUERY";
 
-      // Extract Clean English
       final textMatch = RegExp(r'"clean_english_text":\s*"(.*?)"').firstMatch(routerJson);
       if (textMatch != null) cleanEnglish = textMatch.group(1) ?? rawUserMsg;
 
-      // Extract Language
       final langMatch = RegExp(r'"user_language":\s*"(.*?)"').firstMatch(routerJson);
       if (langMatch != null) userLang = langMatch.group(1) ?? "English";
 
       print("DECISION: $intent | LANG: $userLang | TRANSLATION: $cleanEnglish");
 
 
-      // --- STEP 2: EXECUTE ---
-
       if (intent == "SAVE") {
-        // We save the ENGLISH version so the database is clean
         await _memoryService.addMemory(cleanEnglish);
 
-        // But we confirm to the user in THEIR language
-     //   final responsePrompt = "The user spoke $userLang. Tell them kindly (STRICTLY in $userLang) that you have saved this memory: '$cleanEnglish'.IMPORTANT: Do NOT provide an English translation. Only speak $userLang.";
+
         final responsePrompt="""
           The user spoke in $userLang. 
           The English translation of what they saved is: '$cleanEnglish'.
@@ -107,7 +96,6 @@ class ChatbotService {
       }
 
       else if (intent == "QUERY") {
-        // We search using the ENGLISH translation (matches better)
         String? memory = await _memoryService.findRelevantMemory(cleanEnglish);
 
         if (memory != null) {
@@ -134,7 +122,6 @@ class ChatbotService {
         }
       }
 
-      // Fallback: Normal Chat
       final chatPrompt = "User said: '$rawUserMsg'. Reply naturally in the same language ($userLang). Do NOT switch languages.";
       final chatResponse = await _chatModel.generateContent([Content.text(chatPrompt)]);
       return chatResponse.text ?? "I'm listening.";

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'chatbot.dart';
 import 'reminders.dart';
+import 'visual_aide_screen.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -12,16 +13,15 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
-  // To track the selected item and highlight it
+  // track the selected item and highlight it
   int _selectedIndex = 0;
 
   void _onItemTapped(int index, VoidCallback navigate) {
     setState(() {
       _selectedIndex = index;
     });
-    Navigator.pop(context); // Close the drawer
-    // A small delay allows the drawer to close smoothly before navigating
-    Future.delayed(const Duration(milliseconds: 200), navigate);
+    Navigator.pop(context);
+    Future.delayed(const Duration(milliseconds: 200), navigate);     // delay allows the drawer to close smoothly before navigating
   }
 
   @override
@@ -38,7 +38,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.home_rounded,
                   text: 'Home',
                   index: 0,
-                  onTap: () {}, // Home is the current page, so do nothing
+                  onTap: () {},
                 ),
                 _buildDrawerItem(
                   icon: Icons.notifications_active_rounded,
@@ -51,6 +51,12 @@ class _AppDrawerState extends State<AppDrawer> {
                   text: 'Chat Buddy',
                   index: 2,
                   onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
+                ),
+                _buildDrawerItem(
+                  icon: Icons.visibility_rounded,
+                  text: 'Magic Eye',
+                  index: 3, // Unique index
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisualAideScreen())),
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 16.0),
@@ -65,7 +71,6 @@ class _AppDrawerState extends State<AppDrawer> {
               ],
             ),
           ),
-          // This is the footer section
           const Divider(),
           _buildDrawerItem(
             icon: Icons.logout_rounded,
