@@ -1,9 +1,11 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'settings_provider.dart';
 
@@ -24,8 +26,12 @@ class _VisualAideScreenState extends State<VisualAideScreen> {
 
   Future<void> _identifyObject() async {
     try {
+
       final XFile? photo = await _picker.pickImage(source: ImageSource.camera);
       if (photo != null) {
+        final prefs=await SharedPreferences.getInstance();
+        await prefs.setInt('last_interaction_time', DateTime.now().millisecondsSinceEpoch);
+
         setState(() {
           _selectedImage = File(photo.path);
           _isLoading = true;
@@ -64,6 +70,17 @@ class _VisualAideScreenState extends State<VisualAideScreen> {
     }
   }
 
+  Future<void> _requestPermissions() async {
+    final flutterNotifications = FlutterLocalNotificationsPlugin();
+
+    // For Android 13+
+    final platformImplementation = flutterNotifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+
+    if (platformImplementation != null) {
+      await platformImplementation.requestNotificationsPermission();
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final settings = SettingsProvider.of(context);

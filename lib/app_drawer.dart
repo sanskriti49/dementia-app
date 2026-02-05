@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'chatbot.dart';
 import 'reminders.dart';
 import 'visual_aide_screen.dart';
+import 'settings.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -66,8 +67,7 @@ class _AppDrawerState extends State<AppDrawer> {
                   icon: Icons.settings_rounded,
                   text: 'Settings',
                   index: 3,
-                  onTap: () { /* Navigate to Settings page */ },
-                ),
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage())),                ),
               ],
             ),
           ),

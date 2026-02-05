@@ -231,36 +231,6 @@ class _HomePageState extends State<HomePage> {
     const Color lightGreenCard = Color(0xFFE8F5E9);
     const Color lightTealCard = Color(0xFFE0F2F1);
 
-    // final List<Map<String, dynamic>> featureItems = [
-    //   {'icon': const Icon(Icons.notifications_active_rounded, size: 32, color: primaryTextColor),
-    //     'label': 'Reminders',
-    //     'color': lightTealCard,
-    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderPage())),
-    //   },
-    //   {'icon': SvgPicture.asset('assets/images/chat.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
-    //     'label': 'Chat Buddy',
-    //     'color': lightGreenCard,
-    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
-    //   },
-    //   {
-    //     'icon': SvgPicture.asset('assets/images/photos.svg',  height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
-    //     'label': 'Loved Ones',
-    //     'color': lightGreenCard,
-    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FamilyPage())),
-    //   },
-    //   {'icon': SvgPicture.asset('assets/images/games.svg', height: 32, width: 32, colorFilter: const ColorFilter.mode(primaryTextColor, BlendMode.srcIn)),
-    //     'label': 'Games',
-    //     'color': lightTealCard,
-    //     'onTap': () {},
-    //   },
-    //   {
-    //     'icon': const Icon(Icons.visibility_rounded, size: 32, color: primaryTextColor),
-    //     'label': 'Magic Eye',
-    //     'color': lightTealCard,
-    //     'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisualAideScreen())),
-    //   },
-    // ];
-
     final List<Map<String, dynamic>> featureItems = [
       {
         'icon': const Icon(Icons.notifications_active_rounded, size: 32, color: primaryTextColor),
@@ -280,7 +250,6 @@ class _HomePageState extends State<HomePage> {
         'color': lightGreenCard,
         'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (context) => const FamilyPage())),
       },
-      // SWAPPED: "Games" is gone, "Magic Eye" is here.
       {
         'icon': const Icon(Icons.visibility_rounded, size: 32, color: primaryTextColor),
         'label': 'Magic Eye',
