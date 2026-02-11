@@ -38,7 +38,7 @@ class _FamilyPageState extends State<FamilyPage> {
       name: 'Rohan',
       relation: 'Son',
       phoneNumber: '+91 98765 43210',
-      imagePath: 'assets/images/son.jpg',
+      imagePath: '',
       color: const Color(0xFFE0F2F1),
     ),
     FamilyMember(
@@ -207,7 +207,7 @@ class _FamilyPageState extends State<FamilyPage> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
-          'My Family',
+          'My Loved Ones',
           style: TextStyle(
             color: const Color(0xFF1F2937),
             fontFamily: 'Raleway',
@@ -413,6 +413,213 @@ class AddMemoryCard extends StatelessWidget {
   }
 }
 
+// class PremiumFamilyCard extends StatelessWidget {
+//   final FamilyMember member;
+//   final double fontScale;
+//   final VoidCallback onDelete;
+//
+//   const PremiumFamilyCard({
+//     super.key,
+//     required this.member,
+//     required this.fontScale,
+//     required this.onDelete,
+//   });
+//
+//   //  Phone call
+//   Future<void> _makePhoneCall() async {
+//     final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'\s+'), '');
+//     final Uri launchUri = Uri(scheme: 'tel', path: cleanNumber);
+//     if (await canLaunchUrl(launchUri)) await launchUrl(launchUri);
+//   }
+//
+//   // whatsApp Logic
+//   Future<void> _openWhatsApp() async {
+//     // just the digits (no +, spaces, or dashes)
+//     final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+//
+//     final Uri url = Uri.parse("https://wa.me/$cleanNumber");
+//
+//     if (await canLaunchUrl(url)) {
+//       await launchUrl(url, mode: LaunchMode.externalApplication);
+//     }
+//   }
+//
+//   void _confirmDelete(BuildContext context) {
+//     showDialog(
+//       context: context,
+//       builder: (context) => AlertDialog(
+//         backgroundColor: Colors.white,
+//         surfaceTintColor: Colors.white,
+//         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+//         title: const Text("Delete Memory?", style: TextStyle(fontWeight: FontWeight.bold)),
+//         content: Text("Are you sure you want to remove ${member.name}?", style: const TextStyle(color: Colors.grey)),
+//         actions: [
+//           TextButton(
+//             onPressed: () => Navigator.pop(context),
+//             child: const Text("Keep", style: TextStyle(color: Colors.grey)),
+//           ),
+//           TextButton(
+//             onPressed: () {
+//               Navigator.pop(context);
+//               onDelete();
+//             },
+//             child: const Text("Remove", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       decoration: BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.circular(32),
+//         boxShadow: [
+//           BoxShadow(
+//             color: const Color(0xFF1F2937).withOpacity(0.08),
+//             blurRadius: 25,
+//             offset: const Offset(0, 10),
+//             spreadRadius: 2,
+//           ),
+//         ],
+//       ),
+//       child: ClipRRect(
+//         borderRadius: BorderRadius.circular(32),
+//         child: Column(
+//           children: [
+//             Expanded(
+//               flex: 55,
+//               child: Stack(
+//                 fit: StackFit.expand,
+//                 children: [
+//                   Hero(
+//                     tag: member.name,
+//                     child: Image(
+//                       image: member.isAsset ? AssetImage(member.imagePath) as ImageProvider : FileImage(File(member.imagePath)),
+//                       fit: BoxFit.cover,
+//                       errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: const Icon(Icons.person, size: 80, color: Colors.grey)),
+//                     ),
+//                   ),
+//                   Positioned(
+//                     top: 16,
+//                     right: 16,
+//                     child: ClipOval(
+//                       child: BackdropFilter(
+//                         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+//                         child: GestureDetector(
+//                           onTap: () => _confirmDelete(context),
+//                           child: Container(
+//                             padding: const EdgeInsets.all(10),
+//                             decoration: BoxDecoration(
+//                               color: Colors.black.withOpacity(0.2),
+//                               shape: BoxShape.circle,
+//                             ),
+//                             child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//
+//             Expanded(
+//               flex: 45,
+//               child: Container(
+//                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+//                 color: Colors.white,
+//                 child: Column(
+//                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//                   children: [
+//                     Column(
+//                       children: [
+//                         Text(
+//                           member.name,
+//                           style: TextStyle(
+//                             fontSize: 26 * fontScale,
+//                             fontWeight: FontWeight.w800,
+//                             color: const Color(0xFF1F2937),
+//                             letterSpacing: -0.5,
+//                             height: 1.1,
+//                           ),
+//                           textAlign: TextAlign.center,
+//                           maxLines: 1,
+//                           overflow: TextOverflow.ellipsis,
+//                         ),
+//                         const SizedBox(height: 8),
+//                         Container(
+//                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+//                           decoration: BoxDecoration(
+//                             color: member.color.withOpacity(0.5),
+//                             borderRadius: BorderRadius.circular(20),
+//                           ),
+//                           child: Text(
+//                             member.relation,
+//                             style: TextStyle(
+//                               fontSize: 16 * fontScale,
+//                               color: const Color(0xFF4B5563),
+//                               fontWeight: FontWeight.w600,
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//
+//                     // --- NEW: DUAL BUTTON ROW ---
+//                     Row(
+//                       children: [
+//                         // CALL BUTTON
+//                         Expanded(
+//                           child: SizedBox(
+//                             height: 60,
+//                             child: ElevatedButton(
+//                               onPressed: _makePhoneCall,
+//                               style: ElevatedButton.styleFrom(
+//                                 backgroundColor: const Color(0xFF2D6A4F),
+//                                 foregroundColor: Colors.white,
+//                                 elevation: 4,
+//                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+//                                 padding: EdgeInsets.zero,
+//                               ),
+//                               child: const Icon(Icons.call_rounded, size: 30),
+//                             ),
+//                           ),
+//                         ),
+//                         const SizedBox(width: 12), // Spacing between buttons
+//
+//                         // WHATSAPP BUTTON
+//                         Expanded(
+//                           child: SizedBox(
+//                             height: 60,
+//                             child: ElevatedButton(
+//                               onPressed: _openWhatsApp,
+//                               style: ElevatedButton.styleFrom(
+//                                 backgroundColor: const Color(0xFF25D366), // Official WhatsApp Green
+//                                 foregroundColor: Colors.white,
+//                                 elevation: 4,
+//                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+//                                 padding: EdgeInsets.zero,
+//                               ),
+//                               child: const Icon(Icons.chat_bubble_rounded, size: 28),
+//                             ),
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }
+
 class PremiumFamilyCard extends StatelessWidget {
   final FamilyMember member;
   final double fontScale;
@@ -424,8 +631,6 @@ class PremiumFamilyCard extends StatelessWidget {
     required this.fontScale,
     required this.onDelete,
   });
-
-  //  Phone call
   Future<void> _makePhoneCall() async {
     final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'\s+'), '');
     final Uri launchUri = Uri(scheme: 'tel', path: cleanNumber);
@@ -434,7 +639,6 @@ class PremiumFamilyCard extends StatelessWidget {
 
   // whatsApp Logic
   Future<void> _openWhatsApp() async {
-    // just the digits (no +, spaces, or dashes)
     final String cleanNumber = member.phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
 
     final Uri url = Uri.parse("https://wa.me/$cleanNumber");
@@ -444,6 +648,80 @@ class PremiumFamilyCard extends StatelessWidget {
     }
   }
 
+  String _getInitials(String name) {
+    if (name.isEmpty) return "??";
+    List<String> names = name.split(" ");
+    if (names.length > 1) {
+      return "${names[0][0]}${names[1][0]}".toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  Widget _buildImageContent() {
+    bool hasImage = member.imagePath.isNotEmpty;
+
+    if (!hasImage) {
+      // PREMIUM FALLBACK UI
+      return Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              member.color,
+              member.color.withBlue(200).withOpacity(0.8), // Dynamic shade
+            ],
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Stylized Initial
+              Text(
+                _getInitials(member.name),
+                style: TextStyle(
+                  fontSize: 80 * fontScale,
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFF1F2937).withOpacity(0.2),
+                  letterSpacing: -2,
+                ),
+              ),
+              // Soft icon overlay
+              Transform.translate(
+                offset: const Offset(0, -20),
+                child: Icon(
+                  Icons.face_retouching_natural_rounded,
+                  size: 40,
+                  color: const Color(0xFF1F2937).withOpacity(0.3),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Hero(
+      tag: member.name,
+      child: Image(
+        image: member.isAsset
+            ? AssetImage(member.imagePath) as ImageProvider
+            : FileImage(File(member.imagePath)),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _buildErrorState(),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Container(
+      color: const Color(0xFFF3F4F6),
+      child: const Icon(Icons.broken_image_rounded, size: 50, color: Colors.grey),
+    );
+  }
+
+  // ... (keep your _makePhoneCall and _openWhatsApp methods here)
   void _confirmDelete(BuildContext context) {
     showDialog(
       context: context,
@@ -469,7 +747,6 @@ class PremiumFamilyCard extends StatelessWidget {
       ),
     );
   }
-
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -494,14 +771,7 @@ class PremiumFamilyCard extends StatelessWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Hero(
-                    tag: member.name,
-                    child: Image(
-                      image: member.isAsset ? AssetImage(member.imagePath) as ImageProvider : FileImage(File(member.imagePath)),
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(color: Colors.grey[200], child: const Icon(Icons.person, size: 80, color: Colors.grey)),
-                    ),
-                  ),
+                  _buildImageContent(), // Our new smart image/initials builder
                   Positioned(
                     top: 16,
                     right: 16,
@@ -513,10 +783,11 @@ class PremiumFamilyCard extends StatelessWidget {
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withOpacity(0.15),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 20),
+                            child: const Icon(Icons.delete_outline_rounded,
+                                color: Colors.white, size: 20),
                           ),
                         ),
                       ),
@@ -525,7 +796,6 @@ class PremiumFamilyCard extends StatelessWidget {
                 ],
               ),
             ),
-
             Expanded(
               flex: 45,
               child: Container(
@@ -551,9 +821,10 @@ class PremiumFamilyCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 6),
                           decoration: BoxDecoration(
-                            color: member.color.withOpacity(0.5),
+                            color: member.color.withOpacity(0.4),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -567,8 +838,6 @@ class PremiumFamilyCard extends StatelessWidget {
                         ),
                       ],
                     ),
-
-                    // --- NEW: DUAL BUTTON ROW ---
                     Row(
                       children: [
                         // CALL BUTTON
@@ -580,16 +849,15 @@ class PremiumFamilyCard extends StatelessWidget {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF2D6A4F),
                                 foregroundColor: Colors.white,
-                                elevation: 4,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                                padding: EdgeInsets.zero,
+                                elevation: 0, // Flat premium look
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18)),
                               ),
                               child: const Icon(Icons.call_rounded, size: 30),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12), // Spacing between buttons
-
+                        const SizedBox(width: 12),
                         // WHATSAPP BUTTON
                         Expanded(
                           child: SizedBox(
@@ -597,13 +865,14 @@ class PremiumFamilyCard extends StatelessWidget {
                             child: ElevatedButton(
                               onPressed: _openWhatsApp,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF25D366), // Official WhatsApp Green
+                                backgroundColor: const Color(0xFF25D366),
                                 foregroundColor: Colors.white,
-                                elevation: 4,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                                padding: EdgeInsets.zero,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18)),
                               ),
-                              child: const Icon(Icons.chat_bubble_rounded, size: 28),
+                              child: const Icon(Icons.chat_bubble_rounded,
+                                  size: 28),
                             ),
                           ),
                         ),
@@ -618,4 +887,7 @@ class PremiumFamilyCard extends StatelessWidget {
       ),
     );
   }
+
+// Note: Add your confirmDelete, makePhoneCall, and openWhatsApp logic here
+// exactly as you had them in your original code.
 }

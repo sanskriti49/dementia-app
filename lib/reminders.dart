@@ -37,7 +37,7 @@ class _ReminderPageState extends State<ReminderPage> {
     Reminder(
         id: '3',
         title: 'Water the plants',
-        time: DateTime.now().add(const Duration(hours: 1)),
+        time: DateTime.now().add(const Duration(hours: 2)),
         isCompleted: true),
     Reminder(
         id: '4',

@@ -36,7 +36,6 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
-    // If the user taps the text field, hide the emoji picker and show keyboard
     _focusNode.addListener(() {
       if (_focusNode.hasFocus) {
         setState(() => _showEmoji = false);

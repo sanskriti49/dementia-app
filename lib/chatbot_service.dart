@@ -1,5 +1,7 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'memory_service.dart';
 
 class ChatbotService {
@@ -8,126 +10,193 @@ class ChatbotService {
   late final GenerativeModel _chatModel;
   late final GenerativeModel _routerModel;
   late final MemoryService _memoryService;
+  final Completer<void> _initCompleter = Completer<void>();
 
   ChatbotService() {
     if (_apiKey == 'API_KEY_NOT_FOUND') {
       throw Exception('API Key not found.');
     }
-
-    _chatModel = GenerativeModel(
-      model: 'gemini-flash-latest',
-      apiKey: _apiKey,
-      safetySettings: [
-        SafetySetting(HarmCategory.harassment, HarmBlockThreshold.none),
-        SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.none),
-      ],
-    );
-
-    _routerModel = GenerativeModel(
-      model: 'gemini-flash-latest',
-      apiKey: _apiKey,
-      generationConfig: GenerationConfig(responseMimeType: 'application/json'),
-    );
-
-    _memoryService = MemoryService(_apiKey);
-    _memoryService.init();
+    _setup();
   }
 
-  Future<String> sendMessage(String rawUserMsg) async {
+  Future<void> _setup() async {
     try {
+      _chatModel = GenerativeModel(
+        model: 'gemini-flash-latest',
+        apiKey: _apiKey,
+      );
+
+      _routerModel = GenerativeModel(
+        model: 'gemini-flash-latest',
+        apiKey: _apiKey,
+        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
+      );
+
+      _memoryService = MemoryService(_apiKey);
+      await _memoryService.init();
+
+      print("✅ ChatbotService & Memory DB Initialized");
+      _initCompleter.complete();
+    } catch (e) {
+      print("❌ Initialization Error: $e");
+      if (!_initCompleter.isCompleted) _initCompleter.completeError(e);
+    }
+  }
+
+  // Future<String> sendMessage(String rawUserMsg) async {
+  //   String userLang = "English";
+  //   String intent = "CHAT";
+  //   String cleanEnglish = rawUserMsg;
+  //   String directReply = "";
+  //
+  //   try {
+  //     if (!_initCompleter.isCompleted) {
+  //       print("⏳ Waiting for initialization...");
+  //       await _initCompleter.future;
+  //     }
+  //
+  //     final routerPrompt = """
+  //       Analyze: "$rawUserMsg"
+  //       Return ONLY a JSON object:
+  //       {
+  //         "intent": "SAVE" | "QUERY" | "CHAT",
+  //         "clean_english_text": "simple english for db",
+  //         "user_language": "Hindi, English, or Hinglish",
+  //         "direct_reply": "Warm response in the user's language"
+  //       }
+  //     """;
+  //
+  //     final routerResponse = await _routerModel.generateContent([Content.text(routerPrompt)]);
+  //     final String jsonString = routerResponse.text ?? "{}";
+  //
+  //     final cleanedJson = jsonString.replaceAll('```json', '').replaceAll('```', '').trim();
+  //     final Map<String, dynamic> data = jsonDecode(cleanedJson);
+  //
+  //     intent = data['intent'] ?? "CHAT";
+  //     cleanEnglish = data['clean_english_text'] ?? rawUserMsg;
+  //     userLang = data['user_language'] ?? "English";
+  //     directReply = data['direct_reply'] ?? "";
+  //
+  //     if (intent == "SAVE") {
+  //       await _memoryService.addMemory(cleanEnglish);
+  //       return directReply.isNotEmpty ? directReply : "ठीक है, मैंने याद रखा।";
+  //     }
+  //
+  //     if (intent == "QUERY") {
+  //       String? memory = await _memoryService.findRelevantMemory(cleanEnglish);
+  //       if (memory != null) {
+  //         final prompt = "User Language: $userLang. Memory: $memory. Answer: $rawUserMsg";
+  //         final response = await _chatModel.generateContent([Content.text(prompt)]);
+  //         return response.text ?? memory;
+  //       } else {
+  //         return userLang == "Hindi" || userLang == "Hinglish"
+  //             ? "मुझे अभी यह याद नहीं है।"
+  //             : "I don't remember that yet.";
+  //       }
+  //     }
+  //
+  //     return directReply.isNotEmpty ? directReply : "I am here for you.";
+  //
+  //   } catch (e) {
+  //     if (e.toString().contains("429") || e.toString().contains("quota")) {
+  //       return "Server busy. Please wait 1 minute.";
+  //     }
+  //     return "Network error. Try again.";
+  //   }
+  // }
+  Future<String> sendMessage(String rawUserMsg) async {
+    String userLang = "English";
+    String intent = "CHAT";
+    String cleanEnglish = rawUserMsg;
+    String directReply = "";
+
+    try {
+      if (!_initCompleter.isCompleted) await _initCompleter.future;
+
+      // final routerPrompt = """
+      //   You are 'Memoir', a gentle assistant for a senior citizen with memory loss in India.
+      //   User said: "$rawUserMsg"
+      //
+      //   Task:
+      //   1. Identify intent (SAVE, QUERY, CHAT).
+      //   2. Translate to clean English for the database.
+      //   3. Determine language (Hindi, English, or Hinglish).
+      //   4. If SAVE/CHAT, write a 'direct_reply' in the user's language.
+      //      BE WARM. Use "aap" (not "tum"). Be comforting.
+      //
+      //   Return ONLY JSON:
+      //   {
+      //     "intent": "SAVE",
+      //     "clean_english_text": "I put my glasses in the wooden cabinet",
+      //     "user_language": "Hinglish",
+      //     "direct_reply": "Ji, bilkul. Maine yaad rakha hai ki aapne chashma wooden cabinet mein rakha hai. Chinta mat kijiye!"
+      //   }
+      // """;
 
       final routerPrompt = """
-      You are the brain of an app for a dementia patient in India. 
-      Analyze this text: "$rawUserMsg"
-      
-      The user might speak English, Hindi, or Hinglish (Hindi in English script) or even other South Asian languages!
-      
-      Return a JSON object with these fields:
-      1. "intent": One of ["SAVE", "QUERY", "CHAT"].
-         - SAVE: User is stating a location (e.g., "mene chabi drawer me rakhi", "i put key on table").
-         - QUERY: User is asking a location (e.g., "chabi kahan hai?", "where key?").
-         - CHAT: Greetings or random talk.
-      2. "clean_english_text": Translate the user's text into clear, simple English (for database storage).
-      3. "user_language": The language the user spoke (e.g., "Hindi", "English", "Hinglish", "Bengali", "Tamil", "Marathi", "Telugu").
-      
-      Example Output: 
-      {"intent": "SAVE", "clean_english_text": "I put the keys on the table.", "user_language": "Hindi"}
-      """;
+  You are an intent classifier for a senior's memory app.
+  User message: "$rawUserMsg"
 
+  Rules:
+  - If the user is stating a fact they want to remember (e.g., "I put my keys in the drawer", "Mera chashma table par hai"), set intent to "SAVE".
+  - If the user is asking where something is, set intent to "QUERY".
+  - Otherwise, set intent to "CHAT".
+
+  Return ONLY JSON:
+  {
+    "intent": "SAVE" | "QUERY" | "CHAT",
+    "clean_english_text": "The core fact in simple English",
+    "user_language": "Hindi/English/Hinglish",
+    "direct_reply": "A warm response to the user in the user's language"
+  }
+""";
       final routerResponse = await _routerModel.generateContent([Content.text(routerPrompt)]);
-      final routerJson = routerResponse.text ?? "{}";
+      String jsonString = routerResponse.text ?? "{}";
+      jsonString = jsonString.replaceAll(RegExp(r'```json|```'), '').trim();
 
-      String intent = "CHAT";
-      String cleanEnglish = rawUserMsg;
-      String userLang = "English";
-
-      if (routerJson.contains('"intent": "SAVE"')) intent = "SAVE";
-      if (routerJson.contains('"intent": "QUERY"')) intent = "QUERY";
-
-      final textMatch = RegExp(r'"clean_english_text":\s*"(.*?)"').firstMatch(routerJson);
-      if (textMatch != null) cleanEnglish = textMatch.group(1) ?? rawUserMsg;
-
-      final langMatch = RegExp(r'"user_language":\s*"(.*?)"').firstMatch(routerJson);
-      if (langMatch != null) userLang = langMatch.group(1) ?? "English";
-
-      print("DECISION: $intent | LANG: $userLang | TRANSLATION: $cleanEnglish");
-
+      Map<String, dynamic> data = jsonDecode(jsonString);
+      intent = data['intent'] ?? "CHAT";
+      cleanEnglish = data['clean_english_text'] ?? rawUserMsg;
+      userLang = data['user_language'] ?? "English";
+      directReply = data['direct_reply'] ?? "";
 
       if (intent == "SAVE") {
         await _memoryService.addMemory(cleanEnglish);
-
-
-        final responsePrompt="""
-          The user spoke in $userLang. 
-          The English translation of what they saved is: '$cleanEnglish'.
-          
-          Reply to the user in $userLang.
-          Confirm that you have remembered this information.
-          
-          CRITICAL RULES:
-          1. Translate the location/item details back into $userLang naturally.
-          2. Do NOT mention that this is a translation.
-          3. Do NOT say "The English translation is...".
-          4. Do NOT output the English text if the user spoke any non-English language.
-        """;
-        final response = await _chatModel.generateContent([Content.text(responsePrompt)]);
-        return response.text ?? "Saved.";
+        return directReply;
       }
 
-      else if (intent == "QUERY") {
+      if (intent == "QUERY") {
         String? memory = await _memoryService.findRelevantMemory(cleanEnglish);
-
         if (memory != null) {
           final prompt = """
-           You are a gentle assistant.
-           User Language: $userLang.
-           User Question (Translated): "$cleanEnglish"
-           Found Memory: "$memory"
-           
-           The user is asking a question. Answer them in $userLang based on the Found Memory.
-           
-           CRITICAL RULES:
-           1. Use the Found Memory facts, but speak entirely in $userLang.
-           2. Do NOT quote the English text directly.
-           3. Be reassuring. Be reassuring and comfort them if they sound troubled. 
-           IMPORTANT: Do NOT include an English translation in your response.
-           """;
+            You are Memoir, a comforting assistant. 
+            Language: $userLang.
+            Memory Found: "$memory"
+            User asked: "$rawUserMsg"
+            
+            Tell the user where their item is. 
+            Rules:
+            - Speak directly to them: "Aapka [item] [location] mein hai."
+            - Be very gentle and kind.
+            - Do NOT say "The memory says...".
+            - Use $userLang only.
+          """;
           final response = await _chatModel.generateContent([Content.text(prompt)]);
           return response.text ?? memory;
         } else {
-          final prompt = "The user asked '$cleanEnglish' in $userLang. Tell them gently in $userLang that you don't remember that information. IMPORTANT: Do NOT provide an English translation.";
-          final response = await _chatModel.generateContent([Content.text(prompt)]);
-          return response.text ?? "I don't remember, sorry :/";
+          return userLang == "Hindi" || userLang == "Hinglish"
+              ? "Mujhe dukh hai, par mujhe abhi yeh yaad nahi aa raha. Kya aapne usey kamre mein rakha tha?"
+              : "I'm so sorry, I don't remember that right now. Could it be in the other room?";
         }
       }
 
-      final chatPrompt = "User said: '$rawUserMsg'. Reply naturally in the same language ($userLang). Do NOT switch languages.";
-      final chatResponse = await _chatModel.generateContent([Content.text(chatPrompt)]);
-      return chatResponse.text ?? "I'm listening.";
+      return directReply.isNotEmpty ? directReply : "Ji, main sun raha hoon. Bataiye?";
 
     } catch (e) {
-      print("ERROR: $e");
-      return "Network error. Can you check your internet?";
+      print("Actual Error: $e");
+      return (userLang == "Hindi" || userLang == "Hinglish")
+          ? "Maaf kijiye, mujhe thoda network issue ho raha hai."
+          : "I'm having a little trouble connecting. Could you say that again?";
     }
   }
 }
