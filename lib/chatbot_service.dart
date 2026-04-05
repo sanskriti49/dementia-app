@@ -1,202 +1,274 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'dart:async';
 import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'memory_service.dart';
+import 'reminder_service.dart';
+import 'chatbot_engine.dart';
 
 class ChatbotService {
-  final String _apiKey = dotenv.env['GEMINI_API_KEY'] ?? 'API_KEY_NOT_FOUND';
+  final String _groqKey = dotenv.env['GROQ_API_KEY'] ?? '';
+  final String _geminiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+  final String _groqUrl = "https://api.groq.com/openai/v1/chat/completions";
 
-  late final GenerativeModel _chatModel;
-  late final GenerativeModel _routerModel;
-  late final MemoryService _memoryService;
-  final Completer<void> _initCompleter = Completer<void>();
+  final ChatbotEngine _engine = ChatbotEngine();
+  final MemoryService _memory = MemoryService();
 
-  ChatbotService() {
-    if (_apiKey == 'API_KEY_NOT_FOUND') {
-      throw Exception('API Key not found.');
+  ChatbotService();
+
+  final List<Map<String, String>> _conversationHistory = [];
+
+  bool _isInitialized = false;
+
+  Future<void> _ensureInitialized() async {
+    if (!_isInitialized) {
+      await _memory.init();
+      _isInitialized = true;
     }
-    _setup();
+  }
+  DateTime extractTime(String text) {
+    final now = DateTime.now();
+    text = text.toLowerCase();
+
+    // ========================
+    // 1️⃣ RELATIVE TIME FIRST
+    // ("in 20 minutes", "after 2 hours", including hr/hr(s)")
+    // ========================
+    final relativeMatch = RegExp(
+      r'(in|after)\s*(\d+)\s*(minute|minutes|min|hour|hours|hr|hrs)',
+    ).firstMatch(text);
+
+    if (relativeMatch != null) {
+      int value = int.parse(relativeMatch.group(2)!);
+      String unit = relativeMatch.group(3)!;
+
+      if (unit.contains('hour') || unit.contains('hr')) {
+        return now.add(Duration(hours: value));
+      } else {
+        return now.add(Duration(minutes: value));
+      }
+    }
+
+    // ========================
+    // 2️⃣ DAY CONTEXT
+    // ========================
+    int dayOffset = 0;
+    if (text.contains("tomorrow") || text.contains("kal")) {
+      dayOffset = 1;
+    } else if (text.contains("day after")) {
+      dayOffset = 2;
+    } else if (text.contains("today") || text.contains("aaj")) {
+      dayOffset = 0;
+    }
+
+    // ========================
+    // 3️⃣ DEFAULT HOUR BASED ON TIME OF DAY
+    // ========================
+    int defaultHour = 9; // fallback if no time specified
+    if (text.contains("morning") || text.contains("subah")) {
+      defaultHour = 8;
+    } else if (text.contains("afternoon") || text.contains("dopahar")) {
+      defaultHour = 14;
+    } else if (text.contains("evening") || text.contains("shaam")) {
+      defaultHour = 18;
+    } else if (text.contains("night") || text.contains("raat")) {
+      defaultHour = 21;
+    }
+
+    // 4️⃣ ABSOLUTE TIME (with AM/PM or HH:MM)
+    final timeMatch = RegExp(r'(\d{1,2})[.:\s]?(\d{2})?\s*(am|pm)?').firstMatch(text);
+    int hour = defaultHour;
+    int minute = 0;
+
+    if (timeMatch != null) {
+      hour = int.parse(timeMatch.group(1)!);
+
+      if (timeMatch.group(2) != null) {
+        minute = int.parse(timeMatch.group(2)!);
+      } else {
+        minute = 0;
+      }
+
+      String? period = timeMatch.group(3);
+      if (period != null) {
+        period = period.toLowerCase();
+        if (period == "pm" && hour < 12) hour += 12;
+        if (period == "am" && hour == 12) hour = 0;
+      } else if (hour < 12 && (text.contains("evening") || text.contains("night") || text.contains("pm"))) {
+        hour += 12;
+      }
+    }
+
+    DateTime result = DateTime(
+      now.year,
+      now.month,
+      now.day + dayOffset,
+      hour,
+      minute,
+    );
+    // 6️⃣ IF TIME ALREADY PASSED → SHIFT FORWARD
+    if (result.isBefore(now)) {
+      result = result.add(const Duration(days: 1));
+    }
+
+    return result;
   }
 
-  Future<void> _setup() async {
-    try {
-      _chatModel = GenerativeModel(
-        model: 'gemini-flash-latest',
-        apiKey: _apiKey,
+  Future<String> extractObjectWithAI(String text) async {
+    try{
+      final response = await http.post(Uri.parse(_groqUrl),
+        headers: {"Authorization": "Bearer $_groqKey", "Content-Type": "application/json"},
+        body: jsonEncode({
+          "model": "llama-3.1-8b-instant",
+          "messages": [
+            {"role": "system", "content": "Extract the reminder title in 2-4 words. Example: 'take medicine', 'call mom', 'drink water'. Respond with only words."},
+            {"role": "user", "content": text}
+          ],
+          "max_tokens": 5,
+          "temperature": 0.1,
+        }),
       );
-
-      _routerModel = GenerativeModel(
-        model: 'gemini-flash-latest',
-        apiKey: _apiKey,
-        generationConfig: GenerationConfig(responseMimeType: 'application/json'),
-      );
-
-      _memoryService = MemoryService(_apiKey);
-      await _memoryService.init();
-
-      print("✅ ChatbotService & Memory DB Initialized");
-      _initCompleter.complete();
+      final data = jsonDecode(response.body);
+      String result = data['choices'][0]['message']['content'].toString().toLowerCase().trim();
+      return result.replaceAll(RegExp(r'[^\w\s]'), '');
     } catch (e) {
-      print("❌ Initialization Error: $e");
-      if (!_initCompleter.isCompleted) _initCompleter.completeError(e);
+      return "unknown";
     }
   }
 
-  // Future<String> sendMessage(String rawUserMsg) async {
-  //   String userLang = "English";
-  //   String intent = "CHAT";
-  //   String cleanEnglish = rawUserMsg;
-  //   String directReply = "";
-  //
-  //   try {
-  //     if (!_initCompleter.isCompleted) {
-  //       print("⏳ Waiting for initialization...");
-  //       await _initCompleter.future;
-  //     }
-  //
-  //     final routerPrompt = """
-  //       Analyze: "$rawUserMsg"
-  //       Return ONLY a JSON object:
-  //       {
-  //         "intent": "SAVE" | "QUERY" | "CHAT",
-  //         "clean_english_text": "simple english for db",
-  //         "user_language": "Hindi, English, or Hinglish",
-  //         "direct_reply": "Warm response in the user's language"
-  //       }
-  //     """;
-  //
-  //     final routerResponse = await _routerModel.generateContent([Content.text(routerPrompt)]);
-  //     final String jsonString = routerResponse.text ?? "{}";
-  //
-  //     final cleanedJson = jsonString.replaceAll('```json', '').replaceAll('```', '').trim();
-  //     final Map<String, dynamic> data = jsonDecode(cleanedJson);
-  //
-  //     intent = data['intent'] ?? "CHAT";
-  //     cleanEnglish = data['clean_english_text'] ?? rawUserMsg;
-  //     userLang = data['user_language'] ?? "English";
-  //     directReply = data['direct_reply'] ?? "";
-  //
-  //     if (intent == "SAVE") {
-  //       await _memoryService.addMemory(cleanEnglish);
-  //       return directReply.isNotEmpty ? directReply : "ठीक है, मैंने याद रखा।";
-  //     }
-  //
-  //     if (intent == "QUERY") {
-  //       String? memory = await _memoryService.findRelevantMemory(cleanEnglish);
-  //       if (memory != null) {
-  //         final prompt = "User Language: $userLang. Memory: $memory. Answer: $rawUserMsg";
-  //         final response = await _chatModel.generateContent([Content.text(prompt)]);
-  //         return response.text ?? memory;
-  //       } else {
-  //         return userLang == "Hindi" || userLang == "Hinglish"
-  //             ? "मुझे अभी यह याद नहीं है।"
-  //             : "I don't remember that yet.";
-  //       }
-  //     }
-  //
-  //     return directReply.isNotEmpty ? directReply : "I am here for you.";
-  //
-  //   } catch (e) {
-  //     if (e.toString().contains("429") || e.toString().contains("quota")) {
-  //       return "Server busy. Please wait 1 minute.";
-  //     }
-  //     return "Network error. Try again.";
-  //   }
-  // }
-  Future<String> sendMessage(String rawUserMsg) async {
-    String userLang = "English";
-    String intent = "CHAT";
-    String cleanEnglish = rawUserMsg;
-    String directReply = "";
+  Future<Map<String, dynamic>> getSmartResponse(String prompt) async {
+    await _ensureInitialized();
 
+    final String lowPrompt = prompt.toLowerCase().trim();
+    if (lowPrompt == "clear all memories" || lowPrompt == "forget everything") {
+      await _memory.nukeDatabase();
+      _conversationHistory.clear();
+      print("💥 [System] Database and History wiped by user command.");
+      return {
+        'text': "I have cleared all my stored memories. We are starting with a blank slate! How can I help you today?",
+        'usedMemory': false,
+        'intent':"CHAT",
+      };
+    }
+
+    await _memory.debugDumpDatabase();
     try {
-      if (!_initCompleter.isCompleted) await _initCompleter.future;
+      final String cleanPrompt = _engine.performFuzzyCorrection(prompt);
 
-      // final routerPrompt = """
-      //   You are 'Memoir', a gentle assistant for a senior citizen with memory loss in India.
-      //   User said: "$rawUserMsg"
-      //
-      //   Task:
-      //   1. Identify intent (SAVE, QUERY, CHAT).
-      //   2. Translate to clean English for the database.
-      //   3. Determine language (Hindi, English, or Hinglish).
-      //   4. If SAVE/CHAT, write a 'direct_reply' in the user's language.
-      //      BE WARM. Use "aap" (not "tum"). Be comforting.
-      //
-      //   Return ONLY JSON:
-      //   {
-      //     "intent": "SAVE",
-      //     "clean_english_text": "I put my glasses in the wooden cabinet",
-      //     "user_language": "Hinglish",
-      //     "direct_reply": "Ji, bilkul. Maine yaad rakha hai ki aapne chashma wooden cabinet mein rakha hai. Chinta mat kijiye!"
-      //   }
-      // """;
+      final String nluExtractions = await _engine.getLocalNLUContext(cleanPrompt);
+      final String intent = await _engine.classifyIntent(cleanPrompt);
+      print("🤖 Chatbot Intent Detected: $intent");
 
-      final routerPrompt = """
-  You are an intent classifier for a senior's memory app.
-  User message: "$rawUserMsg"
+      String memoryContext = "No history relevant to this specific message.";
+      String situationalInstruction = "";
+      bool usedMemory = false;
 
-  Rules:
-  - If the user is stating a fact they want to remember (e.g., "I put my keys in the drawer", "Mera chashma table par hai"), set intent to "SAVE".
-  - If the user is asking where something is, set intent to "QUERY".
-  - Otherwise, set intent to "CHAT".
+      if (intent == "REMINDER") {
+        final time = extractTime(cleanPrompt);
+        String title = await extractObjectWithAI(cleanPrompt);
 
-  Return ONLY JSON:
-  {
-    "intent": "SAVE" | "QUERY" | "CHAT",
-    "clean_english_text": "The core fact in simple English",
-    "user_language": "Hindi/English/Hinglish",
-    "direct_reply": "A warm response to the user in the user's language"
-  }
-""";
-      final routerResponse = await _routerModel.generateContent([Content.text(routerPrompt)]);
-      String jsonString = routerResponse.text ?? "{}";
-      jsonString = jsonString.replaceAll(RegExp(r'```json|```'), '').trim();
-
-      Map<String, dynamic> data = jsonDecode(jsonString);
-      intent = data['intent'] ?? "CHAT";
-      cleanEnglish = data['clean_english_text'] ?? rawUserMsg;
-      userLang = data['user_language'] ?? "English";
-      directReply = data['direct_reply'] ?? "";
+        if (title == "unknown" || title.isEmpty) {
+          title = cleanPrompt;
+        }
+        return {
+          "text": "Got it! I’ll remind you 😊",
+          "action": "CREATE_REMINDER",
+          "title": title,
+          "time": time,
+          "usedMemory": false,
+          "intent": "REMINDER",
+        };
+      }
 
       if (intent == "SAVE") {
-        await _memoryService.addMemory(cleanEnglish);
-        return directReply;
-      }
+        // STEP A: Use AI to understand WHAT the object is
+        String detectedSubject = await extractObjectWithAI(cleanPrompt);
 
-      if (intent == "QUERY") {
-        String? memory = await _memoryService.findRelevantMemory(cleanEnglish);
-        if (memory != null) {
-          final prompt = """
-            You are Memoir, a comforting assistant. 
-            Language: $userLang.
-            Memory Found: "$memory"
-            User asked: "$rawUserMsg"
-            
-            Tell the user where their item is. 
-            Rules:
-            - Speak directly to them: "Aapka [item] [location] mein hai."
-            - Be very gentle and kind.
-            - Do NOT say "The memory says...".
-            - Use $userLang only.
-          """;
-          final response = await _chatModel.generateContent([Content.text(prompt)]);
-          return response.text ?? memory;
+        // STEP B: Save the raw text + the AI identified subject
+        await _memory.addMemory(cleanPrompt,aiSubject:detectedSubject);
+        await _memory.debugDumpDatabase();
+
+        print("✅ ML Extraction: $detectedSubject Saved.");
+
+        situationalInstruction = "The user is telling you a location. Respond with ONE warm sentence acknowledging you've noted THE EXACT object and location of the $detectedSubject. Ignore all previous database facts for this response.";
+      }
+      else if (intent == "QUERY") {
+        // ONLY search the database when the user asks a question
+        String? found = await _memory.findRelevantMemory(cleanPrompt);
+        String subject = _engine.extractSubject(cleanPrompt);
+        final reminder = await ReminderService.getNextReminderFor(subject);
+
+        String reminderHint = "";
+
+        if (reminder != null) {
+          reminderHint = " You also have a reminder at ${reminder.timeString}.";
+        }
+        if (found != null) {
+          memoryContext = "DATABASE TRUTH: $found$reminderHint";
+          situationalInstruction = "The user is looking for an object. Use the DATABASE TRUTH to answer.";
+          usedMemory = true;
         } else {
-          return userLang == "Hindi" || userLang == "Hinglish"
-              ? "Mujhe dukh hai, par mujhe abhi yeh yaad nahi aa raha. Kya aapne usey kamre mein rakha tha?"
-              : "I'm so sorry, I don't remember that right now. Could it be in the other room?";
+          situationalInstruction = "Item not found in memory. Be a memory coach and ask where they last saw it.";
         }
       }
+      else if (intent == "EMOTIONAL") {
+        situationalInstruction = "The user is sharing a feeling. Focus entirely on empathy. Do not mention any objects or locations.";
+      }
+      else {
+        situationalInstruction = "General friendly conversation.";
+      }
 
-      return directReply.isNotEmpty ? directReply : "Ji, main sun raha hoon. Bataiye?";
+      // 2. CONSTRUCT PAYLOAD
+      List<Map<String, String>> messages = [
+        {
+          "role": "system",
+          "content": """
+            IDENTITY: You are 'Companion', a loving digital caregiver for seniors. 
+            
+            UNIVERSAL RULES:
+            1. MIRROR LANGUAGE: Speak the language the user is using.
+            2. NO HALLUCINATION: You must be 100% literal. If the user says 'Keys', do not say 'Phone'. 
+            3. PRIORITY: The [CURRENT USER MESSAGE] is always more accurate than [MEMORY DATA] if they conflict.
+            4. DIGITAL LIMIT: You cannot move or fetch items physically.
+            5. NO REPETITION: Never repeat the same fact twice in one response. 
 
+            SITUATION: $situationalInstruction
+            [MEMORY DATA]: $memoryContext
+            [LOCAL NLU]: $nluExtractions
+
+            INSTRUCTION: Be warm, concise, and stay focused ONLY on the object mentioned in the last message, if any.
+          """
+        }
+      ];
+
+      messages.addAll(_conversationHistory);
+      messages.add({"role": "user", "content": cleanPrompt});
+
+      // 3. API CALL
+      final response = await http.post(Uri.parse(_groqUrl),
+        headers: {"Authorization": "Bearer $_groqKey", "Content-Type": "application/json"},
+        body: jsonEncode({
+          "model": "llama-3.1-8b-instant",
+          "messages": messages,
+          "temperature": 0.4, // Lower temperature reduces hallucinations
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+      String botResponse = data['choices'][0]['message']['content'];
+
+      // 4. UPDATE HISTORY
+      _conversationHistory.add({"role": "user", "content": cleanPrompt});
+      _conversationHistory.add({"role": "assistant", "content": botResponse});
+      if (_conversationHistory.length > 8) _conversationHistory.removeRange(0, 2);
+
+      return {
+        'text': botResponse,
+        'usedMemory': usedMemory,
+        'intent': intent,
+      };
     } catch (e) {
-      print("Actual Error: $e");
-      return (userLang == "Hindi" || userLang == "Hinglish")
-          ? "Maaf kijiye, mujhe thoda network issue ho raha hai."
-          : "I'm having a little trouble connecting. Could you say that again?";
+      return {'text': "I'm here with you. I'm having a little trouble thinking. Say that again?", 'usedMemory': false};
     }
   }
+
 }

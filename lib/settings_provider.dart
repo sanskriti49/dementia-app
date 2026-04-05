@@ -13,7 +13,8 @@ class _SettingsInherited extends InheritedWidget {
   @override
   bool updateShouldNotify(_SettingsInherited oldWidget) {
     return data.fontSizeMultiplier != oldWidget.data.fontSizeMultiplier ||
-        data.isMagicEyeEnabled != oldWidget.data.isMagicEyeEnabled;
+        data.isMagicEyeEnabled != oldWidget.data.isMagicEyeEnabled ||
+        data.userName != oldWidget.data.userName;
   }
 }
 
@@ -23,8 +24,10 @@ class SettingsProvider extends StatefulWidget {
 
   static SettingsProviderState of(BuildContext context) {
     final result = context.dependOnInheritedWidgetOfExactType<_SettingsInherited>();
-    assert(result != null, 'No SettingsProvider found in context');
-    return result!.data;
+    if (result == null) {
+      throw FlutterError('SettingsProvider not found in widget tree.');
+    }
+    return result.data;
   }
 
   @override
@@ -34,45 +37,56 @@ class SettingsProvider extends StatefulWidget {
 class SettingsProviderState extends State<SettingsProvider> {
   double _fontSizeMultiplier = 1.0;
   bool _isMagicEyeEnabled = false;
+  String _userName = "User";
 
+  String get userName => _userName;
   double get fontSizeMultiplier => _fontSizeMultiplier;
   bool get isMagicEyeEnabled => _isMagicEyeEnabled;
+
+  double s(num size) => (size * _fontSizeMultiplier).toDouble();
+
+  Future<void> _loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        double savedSize = prefs.getDouble('font_size') ?? 1.0;
+        _fontSizeMultiplier = savedSize.clamp(0.8, 1.5);
+        _isMagicEyeEnabled = prefs.getBool('magic_eye_enabled') ?? false;
+
+        _userName = prefs.getString('user_name') ?? "User";
+      });
+    }
+  }
 
   @override
   void initState() {
     super.initState();
-    _loadSettings(); // Initialize data from disk on startup
+    _loadSettings();
   }
 
-  Future<void> _loadSettings() async {
+  void updateUserName(String newName) async {
+    setState(() => _userName = newName);
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _fontSizeMultiplier = prefs.getDouble('font_size') ?? 1.0;
-      _isMagicEyeEnabled = prefs.getBool('magic_eye_enabled') ?? false;
-    });
+    await prefs.setString('user_name', newName);
   }
 
   void updateFontSize(double newMultiplier) async {
-    setState(() => _fontSizeMultiplier = newMultiplier);
+    double safeValue = newMultiplier.clamp(0.8, 1.5);
+    setState(() => _fontSizeMultiplier = safeValue);
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setDouble('font_size', newMultiplier); // Save it so it persists!
+    await prefs.setDouble('font_size', safeValue);
   }
 
   void toggleMagicEye(bool enabled) async {
     setState(() => _isMagicEyeEnabled = enabled);
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('magic_eye_enabled', enabled);
 
     if (enabled) {
       await Workmanager().registerPeriodicTask(
-        "1",
-        "checkInactivityTask",
+        "1", "checkInactivityTask",
         frequency: const Duration(hours: 4),
         existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
-        constraints: Constraints(
-          networkType: NetworkType.notRequired,
-        ),
       );
     } else {
       await Workmanager().cancelByUniqueName("1");

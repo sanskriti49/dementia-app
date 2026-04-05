@@ -1,10 +1,11 @@
-
-
 import 'package:flutter/material.dart';
-import 'chatbot.dart';
-import 'reminders.dart';
-import 'visual_aide_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'settings_provider.dart';
 import 'settings.dart';
+import 'chatbot.dart';
+import 'reminders_screen.dart';
+import 'visual_aide_screen.dart';
+import 'family_page.dart';
 
 class AppDrawer extends StatefulWidget {
   const AppDrawer({Key? key}) : super(key: key);
@@ -14,121 +15,125 @@ class AppDrawer extends StatefulWidget {
 }
 
 class _AppDrawerState extends State<AppDrawer> {
-  // track the selected item and highlight it
-  int _selectedIndex = 0;
-
-  void _onItemTapped(int index, VoidCallback navigate) {
-    setState(() {
-      _selectedIndex = index;
+  // Use a high-level build context to handle navigation after drawer closes
+  void _navigate(Widget screen) {
+    Navigator.pop(context); // Close drawer first
+    Future.delayed(const Duration(milliseconds: 250), () {
+      Navigator.push(context, MaterialPageRoute(builder: (context) => screen));
     });
-    Navigator.pop(context);
-    Future.delayed(const Duration(milliseconds: 200), navigate);     // delay allows the drawer to close smoothly before navigating
   }
 
   @override
   Widget build(BuildContext context) {
+    final settings = SettingsProvider.of(context);
+    const Color accentBlue = Color(0xFF3B82F6); // Using your ChatScreen accentBlue
+
     return Drawer(
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.only(topRight: Radius.circular(30), bottomRight: Radius.circular(30)),
+      ),
       child: Column(
         children: [
-          _buildDrawerHeader(),
+          _buildHeader(settings, accentBlue),
+          const SizedBox(height: 10),
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
-              children: <Widget>[
-                _buildDrawerItem(
-                  icon: Icons.home_rounded,
-                  text: 'Home',
-                  index: 0,
-                  onTap: () {},
-                ),
-                _buildDrawerItem(
-                  icon: Icons.notifications_active_rounded,
-                  text: 'Reminders',
-                  index: 1,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ReminderPage())),
-                ),
-                _buildDrawerItem(
-                  icon: Icons.chat_bubble_rounded,
-                  text: 'Chat Buddy',
-                  index: 2,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
-                ),
-                _buildDrawerItem(
-                  icon: Icons.visibility_rounded,
-                  text: 'Magic Eye',
-                  index: 3, // Unique index
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const VisualAideScreen())),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Divider(),
-                ),
-                _buildDrawerItem(
-                  icon: Icons.settings_rounded,
-                  text: 'Settings',
-                  index: 3,
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => SettingsPage())),                ),
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              children: [
+                _buildItem(Icons.home_rounded, 'Home', accentBlue,
+                        () => Navigator.pop(context), settings, isSelected: true),
+                _buildItem(Icons.calendar_today_rounded, 'My Schedule', const Color(0xFFFFB38A),
+                        () => _navigate(const RemindersScreen()), settings),
+                _buildItem(Icons.forum_rounded, 'Talk to Us', const Color(0xFF81C784),
+                        () => _navigate(const ChatScreen()), settings),
+                _buildItem(Icons.favorite_rounded, 'Loved Ones', const Color(0xFFFF8FA3),
+                        () => _navigate(const FamilyPage()), settings),
+                const Divider(height: 40, thickness: 1, indent: 10, endIndent: 10),
+                _buildItem(Icons.settings_outlined, 'App Settings', Colors.blueGrey,
+                        () => _navigate(SettingsPage()), settings),
               ],
             ),
           ),
-          const Divider(),
-          _buildDrawerItem(
-            icon: Icons.logout_rounded,
-            text: 'Logout',
-            index: 4, // Use a different index
-            onTap: () { /* Handle logout logic */ },
+          // Footer for Presentation appeal
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Text(
+              "Memoir v1.0 • Kanpur, India",
+              style: GoogleFonts.atkinsonHyperlegible(fontSize: 12, color: Colors.grey),
+            ),
           ),
-          const SizedBox(height: 20),
         ],
       ),
     );
   }
 
-  Widget _buildDrawerHeader() {
-    return const UserAccountsDrawerHeader(
-      accountName: Text(
-        'Sanskriti',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-        ),
-      ),
-      accountEmail: Text('Your Personal Companion'),
-      currentAccountPicture: CircleAvatar(
-        backgroundColor: Colors.white,
-        child: Text(
-          'S',
-          style: TextStyle(
-            fontSize: 40.0,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF004D40),
-          ),
-        ),
-      ),
+  Widget _buildHeader(SettingsProviderState settings, Color color) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24.0, 70.0, 24.0, 30.0),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: color.withOpacity(0.05),
+        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 35.0,
+            backgroundColor: color,
+            // FIXED: If userName is 'User' or empty, show Icon. Otherwise show Initial.
+            child: (settings.userName == "User" || settings.userName.isEmpty)
+                ? const Icon(Icons.person_rounded, color: Colors.white, size: 40)
+                : Text(
+              settings.userName[0].toUpperCase(),
+              style: GoogleFonts.atkinsonHyperlegible(
+                  color: Colors.white,
+                  fontSize: 28.0,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+          const SizedBox(height: 20.0),
+          Text(
+            'Hello ${settings.userName},',
+            style: GoogleFonts.atkinsonHyperlegible(
+              fontSize: settings.s(26.0),
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF0F172A),
+            ),
+          ),
+          Text(
+            'You have 3 tasks left today',
+            style: GoogleFonts.atkinsonHyperlegible(
+              fontSize: settings.s(14.0),
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String text,
-    required int index,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Icon(icon),
-      title: Text(text),
-      selected: _selectedIndex == index,
-      selectedTileColor: Colors.teal.withOpacity(0.1),
-      onTap: () => _onItemTapped(index, onTap),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+  Widget _buildItem(IconData icon, String title, Color color, VoidCallback onTap, dynamic settings, {bool isSelected = false}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: isSelected ? color.withOpacity(0.1) : Colors.transparent,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: ListTile(
+        onTap: onTap,
+        leading: Icon(icon, color: color, size: 28.0),
+        title: Text(
+          title,
+          style: GoogleFonts.atkinsonHyperlegible(
+            fontSize: settings.s(18.0),
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? color : const Color(0xFF0F172A),
+          ),
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
       ),
     );
   }

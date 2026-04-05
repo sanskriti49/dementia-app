@@ -1,500 +1,531 @@
 import 'package:flutter/material.dart';
-import 'dart:io';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:intl/intl.dart';
-import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart' as p;
 import 'settings_provider.dart';
 import 'chatbot_service.dart';
+import 'assistant_orchestrator.dart';
+import 'voice_service.dart';
+import 'speech_service.dart';
+import 'package:permission_handler/permission_handler.dart';
+
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
-
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
 class _ChatScreenState extends State<ChatScreen> {
-  final ScrollController _scrollController = ScrollController();
+  late final AssistantOrchestrator _orchestrator;
+  final ChatbotService _service = ChatbotService();
   final TextEditingController _controller = TextEditingController();
-  final ChatbotService _chatbotService = ChatbotService();
-  final FocusNode _focusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  final List<Map<String, dynamic>> messages = [];
+  late final VoiceService _voice;
+  late final SpeechService _speech;
 
+  bool _isListening = false;
   bool _isLoading = false;
-  bool _showEmoji = false;
 
-  final List<Map<String, dynamic>> messages = [
-    {
-      'sender': 'bot',
-      'text': 'Hi Sanskriti! 😊 I am your smart assistant. How can I help you today?',
-      'time': DateTime.now(),
-    },
-  ];
+  static const Color navyText = Color(0xFF0F172A);
+  static const Color accentBlue = Color(0xFF3B82F6);
+  static const Color softBackground = Color(0xFFF8FAFC);
+  static const Color botBubbleColor = Colors.white;
+  static const Color userBubbleColor = Color(0xFF3B82F6);
 
   @override
   void initState() {
     super.initState();
-    _focusNode.addListener(() {
-      if (_focusNode.hasFocus) {
-        setState(() => _showEmoji = false);
+    _voice = VoiceService();
+    _speech = SpeechService();
+
+    _voice.init();
+    _orchestrator = AssistantOrchestrator(_service,_voice);
+    _addInitialGreeting();
+  }
+
+  void _addInitialGreeting() {
+    if (messages.isEmpty) {
+      messages.add({
+        'sender': 'bot',
+        'text': 'Hi there! I’m here to keep your thoughts safe and chat whenever you need a friend. How are you feeling in this moment?',
+        'time': DateTime.now(),
+        'isMem': false
+      });
+    }
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeOutQuart,
+        );
       }
     });
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    _scrollController.dispose();
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  // --- LOGIC ---
-
-  Future<void> _sendMessage() async {
-    final userInput = _controller.text.trim();
-    if (userInput.isEmpty || _isLoading) return;
-
+  void _handleSend() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
     _controller.clear();
+
     setState(() {
       messages.add({
         'sender': 'user',
-        'text': userInput,
+        'text': text,
         'time': DateTime.now(),
+        'isMem': false
       });
       _isLoading = true;
-      _showEmoji = false; // Close picker on send
     });
     _scrollToBottom();
 
-    // Call your actual service here
-    final botResponse = await _chatbotService.sendMessage(userInput);
-
+    final res = await _orchestrator.handle(text);
     if (!mounted) return;
 
     setState(() {
       messages.add({
         'sender': 'bot',
-        'text': botResponse,
+        'text': res['text'],
         'time': DateTime.now(),
+        'isMem': res['usedMemory']
       });
       _isLoading = false;
     });
     _scrollToBottom();
   }
 
-  void _scrollToBottom() {
-    // Small delay to ensure the list has rendered the new item before scrolling
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+  Future<bool> _requestMicPermission() async {
+    var status = await Permission.microphone.request();
+    return status.isGranted;
   }
+  void _startListening() async {
+    bool granted = await _requestMicPermission();
+    if (!granted) return;
 
-  void _toggleEmojiPicker() {
-    if (_showEmoji) {
-      // Switch to Keyboard
-      setState(() => _showEmoji = false);
-      _focusNode.requestFocus();
-    } else {
-      // Switch to Emoji
-      _focusNode.unfocus(); // Hide keyboard first
-      setState(() => _showEmoji = true);
+    bool available = await _speech.init();
+    print("Speech available: $available");
+
+    if (available) {
+      setState(() => _isListening = true);
+
+      await _speech.startListening((text) {
+        setState(() {
+          _controller.text = text;
+        });
+      });
     }
   }
 
+  void _stopListening() async {
+    await _speech.stopListening();
+    setState(() => _isListening = false);
+
+    _handleSend(); // auto send after speaking
+  }
+
+  void _handleMenuAction(String value) {
+    switch (value) {
+      case 'clear':
+        _showClearDialog();
+        break;
+      case 'prompt':
+        _showPromptDialog();
+        break;
+      case 'memory':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Memory viewer coming soon!")),
+        );
+        break;
+    }
+  }
+
+  // --- INTEGRATED: Versatile & Empathetic Prompt Dialog ---
+  void _showPromptDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text("About your Companion",
+            style: GoogleFonts.atkinsonHyperlegible(fontWeight: FontWeight.w800, color: navyText)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "I am designed to be a versatile, helpful, all-in-one companion. Whether you need help solving a day-to-day life problem, organizing your thoughts, or just someone to listen, I am here for you.",
+              style: GoogleFonts.atkinsonHyperlegible(fontSize: 16, height: 1.4, color: navyText),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.psychology_alt_rounded, color: accentBlue, size: 24),
+                const SizedBox(width: 8),
+                Text(
+                  "Memory Feature:",
+                  style: GoogleFonts.atkinsonHyperlegible(fontWeight: FontWeight.bold, color: accentBlue, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              "I remember key details from our past chats to provide better, more personalized help for any situation you face.",
+              style: GoogleFonts.atkinsonHyperlegible(fontSize: 14, color: navyText.withOpacity(0.7), height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8, bottom: 8),
+            child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Got it", style: GoogleFonts.atkinsonHyperlegible(fontWeight: FontWeight.w800, fontSize: 16, color: accentBlue))
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showClearDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Clear conversation?"),
+        content: const Text("This will remove all current messages from the screen."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () {
+              setState(() => messages.clear());
+              _addInitialGreeting();
+              Navigator.pop(context);
+            },
+            child: const Text("Clear", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final settings = SettingsProvider.of(context);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF3F5),
-      appBar: _buildAppBar(context),
-      // PopScope handles the Android Back Button
-      body: PopScope(
-        canPop: !_showEmoji,
-        onPopInvoked: (didPop) {
-          if (didPop) return;
-          setState(() => _showEmoji = false);
-        },
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
+      backgroundColor: softBackground,
+      appBar: AppBar(
+        toolbarHeight: 85,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        titleSpacing: 0,
+        title: Container(
+          padding: const EdgeInsets.only(left: 8, right: 10),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: navyText, size: 22),
+              ),
+              Stack(
                 children: [
-                  // Pattern Background
-                  Positioned.fill(
-                    child: Opacity(
-                      opacity: 0.05,
-                      child: Container(color: Colors.transparent),
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: accentBlue.withOpacity(0.2), width: 1),
+                    ),
+                    child: CircleAvatar(
+                      radius: 22,
+                      backgroundColor: accentBlue.withOpacity(0.1),
+                      child: const Icon(Icons.face_retouching_natural_rounded, color: accentBlue, size: 24),
                     ),
                   ),
-
-                  // THE CHAT LIST
-                  ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                    // MAGIC HERE: If loading, we add 1 extra item for the indicator
-                    itemCount: messages.length + (_isLoading ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      // If we are at the last index and loading is true, show indicator
-                      if (_isLoading && index == messages.length) {
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8, bottom: 12),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: _buildTypingIndicator(),
-                          ),
-                        );
-                      }
-
-                      // Otherwise show standard message
-                      final msg = messages[index];
-                      return _buildMessageBubble(msg, msg['sender'] == 'user', settings.fontSizeMultiplier);
-                    },
+                  Positioned(
+                    right: 1,
+                    bottom: 1,
+                    child: Container(
+                      height: 12,
+                      width: 12,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                    ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds),
                   ),
                 ],
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Companion",
+                        style: GoogleFonts.atkinsonHyperlegible(
+                          color: navyText,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 19,
+                        )),
+                    const SizedBox(height: 2),
+                    Text("Here to help :)",
+                        style: GoogleFonts.atkinsonHyperlegible(
+                          color: Colors.green.shade600,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        )),
+                  ],
+                ),
+              ),
+              PopupMenuButton<String>(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                icon: Icon(Icons.more_horiz_rounded, color: navyText.withOpacity(0.4), size: 28),
+                onSelected: _handleMenuAction,
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: 'prompt',
+                    child: const Row(
+                      children: [Icon(Icons.info_outline, size: 20), SizedBox(width: 10), Text("Check Prompts")],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'memory',
+                    child: const Row(
+                      children: [Icon(Icons.psychology_outlined, size: 20), SizedBox(width: 10), Text("View Memory")],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: 'clear',
+                    child: const Row(
+                      children: [Icon(Icons.delete_outline, color: Colors.red), SizedBox(width: 10), Text("Clear Chat", style: TextStyle(color: Colors.red))],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: Container(color: Colors.black.withOpacity(0.05), height: 1),
+        ),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+              itemCount: messages.length,
+              itemBuilder: (context, i) => _buildCleanBubble(messages[i], settings),
             ),
-
-            // INPUT AREA
-            _buildInputArea(settings.fontSizeMultiplier),
-
-            // EMOJI PICKER (Conditional Visibility)
-            if (_showEmoji)
-              SizedBox(
-                height: 250,
-                child: EmojiPicker(
-                  onEmojiSelected: (category, emoji) {
-                    _controller.text = _controller.text + emoji.emoji;
-                    // Move cursor to end
-                    _controller.selection = TextSelection.fromPosition(
-                        TextPosition(offset: _controller.text.length));
-                  },
-                  config: Config(
-                    // height: 256,
-                    // checkPlatformCompatibility: true,
-                    // emojiSizeMax: 32 * (Platform.isIOS ? 1.30 : 1.0),
-                    //
-                    // initCategory: Category.SMILEYS,
-                    // bgColor: const Color(0xFFF2F2F2),
-                    // indicatorColor: const Color(0xFF2D6A4F),
-                    // iconColor: Colors.grey,
-                    // iconColorSelected: const Color(0xFF2D6A4F),
-                    // backspaceColor: const Color(0xFF2D6A4F),
-                    // skinToneDialogBgColor: Colors.white,
-                    // skinToneIndicatorColor: Colors.grey,
-                    // enableSkinTones: true,
-                    // recentsLimit: 28,
-                    // replaceEmojiOnLimitExceed: false,
-                    // noRecents: const Text(
-                    //   'No Recents',
-                    //   style: TextStyle(fontSize: 20, color: Colors.black26),
-                    //   textAlign: TextAlign.center,
-                    // ),
-                    // loadingIndicator: const SizedBox.shrink(),
-                    // tabIndicatorAnimDuration: kTabScrollDuration,
-                    // categoryIcons: const CategoryIcons(),
-                    // buttonMode: ButtonMode.MATERIAL,
-                    // checkPlatformCompatibility: true,
-                    // 1. General Settings
-                    height: 256,
-                    checkPlatformCompatibility: true,
-
-                    // 2. Emoji View Settings (Grid, Size, Background)
-                    emojiViewConfig: EmojiViewConfig(
-                      emojiSizeMax: 32 * (Platform.isIOS ? 1.30 : 1.0),
-                      columns: 7,
-                      backgroundColor: const Color(0xFFF2F2F2),
-                      recentsLimit: 28,
-                      replaceEmojiOnLimitExceed: false,
-                      noRecents: const Text(
-                        'No Recents',
-                        style: TextStyle(fontSize: 20, color: Colors.black26),
-                        textAlign: TextAlign.center,
-                      ),
-                      buttonMode: ButtonMode.MATERIAL,
-                    ),
-
-                    // 3. Category View Settings (The top bar with Smileys, Flags, etc.)
-                    categoryViewConfig: const CategoryViewConfig(
-                      initCategory: Category.SMILEYS,
-                      backgroundColor: Color(0xFFF2F2F2),
-                      indicatorColor: Color(0xFF2D6A4F),
-                      iconColor: Colors.grey,
-                      iconColorSelected: Color(0xFF2D6A4F),
-                      backspaceColor: Color(0xFF2D6A4F),
-                      tabIndicatorAnimDuration: kTabScrollDuration,
-                    ),
-
-                    // 4. Bottom Action Bar (Search, etc.) - specific to new versions
-                    bottomActionBarConfig: const BottomActionBarConfig(
-                      backgroundColor: Color(0xFFF2F2F2),
-                      buttonColor: Color(0xFFF2F2F2),
-                      buttonIconColor: Colors.grey,
-                    ),
-
-                    // 5. Search View Settings
-                    searchViewConfig: const SearchViewConfig(
-                      backgroundColor: Color(0xFFF2F2F2),
-                      buttonIconColor: Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      toolbarHeight: 70,
-      leadingWidth: 60,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 16),
-        child: CircleAvatar(
-          backgroundColor: Colors.white,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Color(0xFF2D6A4F), size: 18),
-            onPressed: () => Navigator.pop(context),
           ),
-        ),
-      ),
-      title: Row(
-        children: [
-          Stack(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)]),
-                ),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white,
-                  child: SvgPicture.asset(
-                    'assets/images/chatbot1.svg',
-                    width: 24,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: Colors.greenAccent[400],
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                ),
-              )
-            ],
-          ),
-          const SizedBox(width: 12),
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Assistant',
-                style: TextStyle(color: Color(0xFF1F2937), fontWeight: FontWeight.bold, fontSize: 18),
-              ),
-              Text(
-                'Online',
-                style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
+          _buildFloatingInput(settings),
         ],
       ),
     );
   }
 
-  Widget _buildTypingIndicator() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-          bottomLeft: Radius.circular(4), // Tail on the left
-        ),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _dot(0),
-          const SizedBox(width: 4),
-          _dot(150),
-          const SizedBox(width: 4),
-          _dot(300),
-        ],
-      ),
-    ).animate().fadeIn().slideX(begin: -0.1);
-  }
-
-  Widget _dot(int delay) {
-    return Container(
-      width: 6,
-      height: 6,
-      decoration: const BoxDecoration(color: Color(0xFF26A69A), shape: BoxShape.circle),
-    ).animate(onPlay: (c) => c.repeat(reverse: true))
-        .scaleXY(begin: 0.6, end: 1.2, duration: 600.ms, delay: delay.ms);
-  }
-
-  Widget _buildMessageBubble(Map<String, dynamic> msg, bool isUser, double fontSizeMultiplier) {
-    final text = msg['text'] as String;
-    final time = DateFormat('h:mm a').format(msg['time'] as DateTime);
+  Widget _buildCleanBubble(Map<String, dynamic> m, dynamic s) {
+    bool isUser = m['sender'] == 'user';
+    String timeString = DateFormat('h:mm a').format(m['time'] as DateTime);
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+        margin: const EdgeInsets.only(bottom: 28),
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.8),
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: BoxDecoration(
-                color: isUser ? const Color(0xFF2D6A4F) : Colors.white,
-                gradient: isUser
-                    ? const LinearGradient(colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)])
-                    : null,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(isUser ? 20 : 4),
-                  bottomRight: Radius.circular(isUser ? 4 : 20),
+            if (m['isMem'] == true)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8, left: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome, size: 14, color: accentBlue),
+                    const SizedBox(width: 4),
+                    Text("RECALLED FROM MEMORY",
+                        style: GoogleFonts.atkinsonHyperlegible(
+                            fontSize: 11, color: accentBlue, fontWeight: FontWeight.w800, letterSpacing: 0.5
+                        )),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
               ),
-              child: SelectableText(
-                text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : const Color(0xFF333333),
-                  fontSize: 16 * fontSizeMultiplier,
-                  height: 1.4,
+            GestureDetector(
+            onTap: () async {
+                if (!isUser) {
+                await _voice.stop();
+                }
+            },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+                decoration: BoxDecoration(
+                  color: isUser ? userBubbleColor : botBubbleColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(24),
+                    topRight: const Radius.circular(24),
+                    bottomLeft: Radius.circular(isUser ? 24 : 6),
+                    bottomRight: Radius.circular(isUser ? 6 : 24),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isUser ? accentBlue.withOpacity(0.2) : Colors.black.withOpacity(0.04),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    )
+                  ],
+                ),
+                child: Text(
+                  m['text'],
+                  style: GoogleFonts.atkinsonHyperlegible(
+                    fontSize: 18,
+                    color: isUser ? Colors.white : navyText,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.only(top: 6, left: 4, right: 4),
-              child: Text(
-                time,
-                style: TextStyle(
-                  fontSize: 11 * fontSizeMultiplier,
-                  color: Colors.grey[500],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
+              padding: const EdgeInsets.only(top: 8, left: 6, right: 6),
+              child: Text(timeString, style: GoogleFonts.atkinsonHyperlegible(fontSize: 12, color: Colors.grey.shade500)),
             ),
           ],
         ),
-      ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.2, curve: Curves.easeOut),
-    );
+      ),
+    ).animate().fadeIn(duration: 400.ms).moveY(begin: 15, end: 0);
   }
 
-  Widget _buildInputArea(double fontSizeMultiplier) {
+  Widget _buildFloatingInput(dynamic s) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      color: const Color(0xFFEFF3F5),
+      padding: const EdgeInsets.fromLTRB(20, 15, 20, 35),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 25, offset: const Offset(0, -5))
+        ],
+      ),
       child: Row(
         children: [
           Expanded(
             child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: softBackground,
                 borderRadius: BorderRadius.circular(30),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
               ),
               child: TextField(
-                focusNode: _focusNode,
                 controller: _controller,
-                onSubmitted: (_) => _sendMessage(),
-                style: TextStyle(fontSize: 16 * fontSizeMultiplier),
-                cursorColor: const Color(0xFF2D6A4F),
-                decoration: InputDecoration(
-                  hintText: 'Type your message...',
-                  hintStyle: TextStyle(color: Colors.grey[400]),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                style: GoogleFonts.atkinsonHyperlegible(fontSize: 17, color: navyText),
+                decoration: const InputDecoration(
+                  hintText: "Talk to me...",
                   border: InputBorder.none,
-                  // --- EMOJI TOGGLE ICON ---
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _showEmoji ? Icons.keyboard : Icons.sentiment_satisfied_alt_rounded,
-                      color: _showEmoji ? const Color(0xFF2D6A4F) : Colors.grey[400],
-                    ),
-                    onPressed: _toggleEmojiPicker,
-                  ),
                 ),
+                onSubmitted: (_) => _handleSend(),
               ),
             ),
           ),
-          const SizedBox(width: 16),
 
+          const SizedBox(width: 10),
+
+          // 🎤 MIC BUTTON
           GestureDetector(
-            onTap: _isLoading ? null : _sendMessage,
+            // onLongPress: _startListening,
+            // onLongPressUp: _stopListening,
+            onTap: () {
+              if (_isListening) {
+                _stopListening();
+              } else {
+                _startListening();
+              }
+            },
             child: Container(
               height: 55,
               width: 55,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF2D6A4F), Color(0xFF26A69A)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
+                color: _isListening ? Colors.red : accentBlue,
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF2D6A4F).withOpacity(0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
               ),
-              child: _isLoading
-                  ? const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-              )
-                  : const Icon(Icons.send_rounded, color: Colors.white, size: 24),
-            ).animate(target: _isLoading ? 0 : 1).scale(duration: 200.ms),
+              child: Icon(
+                _isListening ? Icons.mic : Icons.mic_none,
+                color: Colors.white,
+              ),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // SEND BUTTON
+          GestureDetector(
+            onTap: _handleSend,
+            child: Container(
+              height: 55,
+              width: 55,
+              decoration: BoxDecoration(
+                color: accentBlue,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.send, color: Colors.white),
+            ),
           ),
         ],
-      ),
+      )
+      // Row(
+      //   children: [
+      //     Expanded(
+      //       child: Container(
+      //         padding: const EdgeInsets.symmetric(horizontal: 24),
+      //         decoration: BoxDecoration(color: softBackground, borderRadius: BorderRadius.circular(30)),
+      //         child: TextField(
+      //           controller: _controller,
+      //           style: GoogleFonts.atkinsonHyperlegible(fontSize: 17, color: navyText),
+      //           decoration: const InputDecoration(
+      //             hintText: "Talk to me...",
+      //             border: InputBorder.none,
+      //             contentPadding: EdgeInsets.symmetric(vertical: 20),
+      //             hintStyle: TextStyle(color: Colors.black26),
+      //           ),
+      //           onSubmitted: (_) => _handleSend(),
+      //         ),
+      //       ),
+      //     ),
+      //     const SizedBox(width: 15),
+      //     GestureDetector(
+      //       onTap: _handleSend,
+      //       child: Container(
+      //         height: 60,
+      //         width: 60,
+      //         decoration: BoxDecoration(
+      //           color: accentBlue,
+      //           shape: BoxShape.circle,
+      //           boxShadow: [
+      //             BoxShadow(color: accentBlue.withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 5))
+      //           ],
+      //         ),
+      //         child: _isLoading
+      //             ? const Padding(padding: EdgeInsets.all(18), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+      //             : const Icon(Icons.send_rounded, color: Colors.white, size: 28),
+      //       ),
+      //     ),
+      //   ],
+      // ),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    super.dispose();
   }
 }
